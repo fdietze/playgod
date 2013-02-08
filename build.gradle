@@ -1,0 +1,51 @@
+apply plugin: 'scala'
+apply plugin: 'application'
+apply plugin: 'idea'
+
+mainClassName = "playgod.Main"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.scala-lang:scala-library:2.10.0'
+    compile 'org.scala-lang:scala-swing:2.10.0'
+    
+    compile 'org.lwjgl.lwjgl:lwjgl:2.8.5'
+    compile 'org.jbox2d:jbox2d-library:2.1.2.2'
+}
+
+// incremental compilation
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.useAnt = false
+}
+
+run {
+    systemProperty "java.library.path", "$buildDir/natives/linux"
+}
+
+// copy lwjgl natives
+platforms = ['windows', 'linux', 'osx']
+platforms.each { platform ->
+    task "${platform}Natives" {
+        outputDir = "$buildDir/natives/$platform"
+        inputs.files(configurations.compile)
+        outputs.dir(outputDir)
+        doLast {
+            copy {
+                def artifacts = configurations.compile.resolvedConfiguration.resolvedArtifacts
+                    .findAll { it.classifier == "natives-$platform" }
+                artifacts.each { 
+                    from zipTree(it.file)
+                }            
+                into outputDir
+            }
+        }
+    }
+}
+
+task natives {
+    description "Copies native libraries to an appropriate directory."
+    dependsOn platforms.collect { "${it}Natives" }.findAll { tasks[it] }
+}
