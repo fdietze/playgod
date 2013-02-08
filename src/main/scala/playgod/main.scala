@@ -16,90 +16,86 @@ import org.jbox2d.callbacks.DebugDraw
 import org.jbox2d.collision.shapes.PolygonShape
 import org.lwjgl.BufferUtils
 
+class Box(world:World,
+          pos:Vec2,
+          hx:Float = 1f,
+          hy:Float = 1f,
+          density:Float = 1f,
+          friction:Float = 0.3f,
+          center:Vec2 = new Vec2(0,0),
+          angle:Float = 0f) {
+  val bd = new BodyDef
+  if( density != 0f ) bd.`type` = BodyType.DYNAMIC
+  bd.active = true
+  bd.position.set(pos)
+  val body = world.createBody(bd)
+  val dynamicBox = new PolygonShape
+  dynamicBox.setAsBox(hx,hy, center, angle)
+  val fixtureDef = new FixtureDef
+  fixtureDef.shape = dynamicBox
+  fixtureDef.density = density
+  fixtureDef.friction = friction
+  body.createFixture(fixtureDef)
+}
+
 object Main {
 
 
   def main(args: Array[String]) {
+
+    val world = new World(new Vec2(0,-9.81f), false)
+    world.setDebugDraw(DebugDrawer)
+
+    val ground = new Box(world, new Vec2(0,-10), hx = 50, hy = 3, density = 0f)
+    val box = new Box(world, new Vec2(0,4), hx = 1f, hy = 1f)
+    val box2 = new Box(world, new Vec2(1.5f,10), hx = 1f, hy = 1f)
+
+
+
     Display.setDisplayMode(new DisplayMode(800, 600))
     Display.create()
 
-    // init OpenGL here
     glClearColor(0.3f, 0.3f, 0.3f, 1f)
-
-    val world = new World(new Vec2(0,-1), false)
-
-    val groundBodyDef = new BodyDef
-    groundBodyDef.position.set(0, -10)
-    val groundBody = world.createBody(groundBodyDef)
-    val groundBox = new PolygonShape
-    groundBox.setAsBox(50,10)
-    groundBody.createFixture(groundBox, 0)
-
-    val bd = new BodyDef
-    bd.`type` = BodyType.DYNAMIC
-    bd.active = true
-    bd.position.set(0,4)
-    val body = world.createBody(bd)
-    val dynamicBox = new PolygonShape
-    dynamicBox.setAsBox(1,1)
-    val fixtureDef = new FixtureDef
-    fixtureDef.shape = dynamicBox
-    fixtureDef.density = 1f
-    fixtureDef.friction = 0.3f
-    body.createFixture(fixtureDef)
-
-
-    val debugDrawer = new DebugDrawer(new OBBViewportTransform)
-    debugDrawer.appendFlags(DebugDraw.e_shapeBit | DebugDraw.e_centerOfMassBit | DebugDraw.e_jointBit)
-    world.setDebugDraw(debugDrawer)
-
 
     glMatrixMode(GL_PROJECTION_MATRIX)
     glLoadIdentity()
-    //glOrtho(-400f/16,400f/16,-300f/16,300f/16,-1f,1f)
 
-
-    val matrix = BufferUtils.createFloatBuffer(16)
+    glMatrixMode(GL_MODELVIEW_MATRIX)
+    glLoadIdentity()
     val r = 400/16f
     val t = 300/16f
     val n = -1f
     val f = 1f
-    matrix.put(Array[Float](1/r, 0, 0, 0,   0, 1/t, 0, 0,   0, 0, -2/(f-n), 0,   0, 0, -(f+n)/(f-n),1))
-    matrix.flip()
-    glLoadMatrix(matrix)
+    glScalef(1/r,1/t,1f)
 
-
-    glGetFloat(GL_PROJECTION_MATRIX,matrix)
-    for( y <- 0 until 16 ) {
-      if( y % 4 == 0 ) println()
-      print(" " + matrix.get(y))
-    }
-
-
-
-    glMatrixMode(GL_MODELVIEW_MATRIX)
+    var ii = 0
+    val array = new Array[Long](64)
 
     while (!Display.isCloseRequested() && !isKeyDown(KEY_ESCAPE)) {
-      glLoadIdentity()
-      glScalef(1/r,1/t,1f)
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-      // render OpenGL here
-
-
-
-
 
       world.step(1/60.0f,10,10)
       world.drawDebugData()
 
       Display.update()
+
+
+
+      array(ii) = System.currentTimeMillis()
+      ii = (ii + 1) & 63
+      val time_s = 1/((array((ii - 1) & 63) - array(ii)) / 64000f)
+      Display.setTitle("%8.3ffps" format time_s)
     }
 
     Display.destroy()
   }
 }
 
-class DebugDrawer(viewport: IViewportTransform) extends DebugDraw(viewport) {
+object DebugDrawer extends DebugDraw(new OBBViewportTransform) {
+
+  appendFlags(DebugDraw.e_shapeBit | DebugDraw.e_centerOfMassBit | DebugDraw.e_jointBit)
+
+
   def drawPoint(argPoint: Vec2, argRadiusOnScreen: Float, argColor: Color3f) {}
 
   def drawSolidPolygon(vertices: Array[Vec2], vertexCount: Int, color: Color3f) {
@@ -127,7 +123,7 @@ class DebugDrawer(viewport: IViewportTransform) extends DebugDraw(viewport) {
   def drawTransform(xf: Transform) {
     glPushMatrix()
     glTranslatef(xf.position.x, xf.position.y, 0)
-    glRotatef(xf.getAngle, 0, 0, 1)
+    glRotatef(xf.getAngle.toDegrees, 0, 0, 1)
 
     glBegin(GL_LINES)
     glColor3f(1, 0, 0)
