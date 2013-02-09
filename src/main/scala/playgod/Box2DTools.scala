@@ -1,7 +1,7 @@
 package playgod
 
-import org.jbox2d.dynamics.{FixtureDef, BodyType, BodyDef, World}
-import org.jbox2d.common.{Transform, Color3f, OBBViewportTransform, Vec2}
+import org.jbox2d.dynamics._
+import org.jbox2d.common._
 import org.jbox2d.collision.shapes.PolygonShape
 import org.jbox2d.callbacks.DebugDraw
 import org.lwjgl.opengl.GL11._
@@ -14,7 +14,7 @@ object Box2DTools {
                 density: Float = 1f,
                 friction: Float = 0.3f,
                 center: Vec2 = new Vec2(0, 0),
-                angle: Float = 0f) {
+                angle: Float = 0f) : Body = {
     val bd = new BodyDef
     if (density != 0f) bd.`type` = BodyType.DYNAMIC
     bd.active = true
@@ -27,6 +27,8 @@ object Box2DTools {
     fixtureDef.density = density
     fixtureDef.friction = friction
     body.createFixture(fixtureDef)
+    
+    return body
   }
 
   object DebugDrawer extends DebugDraw(new OBBViewportTransform) {

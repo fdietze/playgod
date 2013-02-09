@@ -5,6 +5,7 @@ import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.Display
 import org.lwjgl.opengl.DisplayMode
 import org.jbox2d.dynamics._
+import org.jbox2d.dynamics.joints._
 import org.jbox2d.common._
 import org.lwjgl.input.Keyboard._
 
@@ -12,17 +13,7 @@ import swing._
 import event._
 import playgod.Box2DTools._
 
-class LWJGLComponent(dimension:java.awt.Dimension) extends Component {
-  import javax.swing.JPanel
-  import java.awt.Canvas
-  override lazy val peer = new JPanel
-  val canvas = new Canvas()
-  canvas.setPreferredSize(dimension)
-  peer.add(canvas)
-}
-
-
-object Main extends swing.SimpleSwingApplication {
+object Main extends SimpleSwingApplication {
 
   val renderArea = new LWJGLComponent(new Dimension(800,600))
   val top = new swing.MainFrame {
@@ -66,8 +57,19 @@ object Main extends swing.SimpleSwingApplication {
     import Box2DTools._
 
     createBox(world, new Vec2(0, -10), hx = 50, hy = 3, density = 0f)
-    createBox(world, new Vec2(0, 4), hx = 1f, hy = 1f)
-    createBox(world, new Vec2(1.5f, 10), hx = 1f, hy = 1f)
+
+    val boxA = createBox(world, new Vec2(0, 4), hx = 1f, hy = 1f)
+    val boxB = createBox(world, new Vec2(1.5f, 10), hx = 1f, hy = 1f)
+    
+    val jointDef = new DistanceJointDef
+    
+    
+    jointDef.initialize(boxA, boxB, boxA.getPosition, boxB.getPosition);
+    jointDef.collideConnected = true;
+    
+    val joint = world.createJoint(jointDef)
+
+
 
 
     glClearColor(0.3f, 0.3f, 0.3f, 1f)
