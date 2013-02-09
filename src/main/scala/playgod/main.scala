@@ -4,25 +4,36 @@ import org.lwjgl.opengl.GL11._
 
 import org.lwjgl.opengl.Display
 import org.lwjgl.opengl.DisplayMode
-import org.jbox2d.dynamics._
-import org.jbox2d.dynamics.joints._
-import org.jbox2d.common._
 import org.lwjgl.input.Keyboard._
+import org.jbox2d.common._
 
 import swing._
 import event._
-import playgod.Box2DTools._
+import Box2DTools._
 
 object Main extends SimpleSwingApplication {
 
   val renderArea = new LWJGLComponent(new Dimension(800,600))
   val top = new swing.MainFrame {
-    val panel = new BoxPanel(swing.Orientation.Vertical) {
-      contents += new Button("Button") {
-        action = new Action("click") {
-          override def apply() {
-            createBox(world, new Vec2(util.Random.nextGaussian().toFloat, 10), hx = 1f, hy = 1f)
-         }
+    val panel = new BoxPanel(Orientation.Vertical) {
+      contents += new BoxPanel(Orientation.Horizontal) {
+        contents += new Button("Random Box") {
+          action = new Action("Random Box") {
+            override def apply() {
+              createBox(Physics.world, new Vec2(util.Random.nextGaussian().toFloat, 10), hx = 1f, hy = 1f)
+           }
+          }
+        }
+        val newAngleField = new TextField {
+          maximumSize = new Dimension(50,30)
+        }
+        contents += newAngleField
+        contents += new Button("Change Angle") {
+          action = new Action("Change Angle") {
+            override def apply() {
+              Physics.angleTarget = newAngleField.text.toFloat.toRadians
+           }
+          }
         }
       }
       contents += renderArea
@@ -48,29 +59,11 @@ object Main extends SimpleSwingApplication {
     start()
   }
 
-  val world = new World(new Vec2(0, -9.81f), true)
-  world.setDebugDraw(DebugDrawer)
 
 
   var running = true
   def start() {
     import Box2DTools._
-
-    createBox(world, new Vec2(0, -10), hx = 50, hy = 3, density = 0f)
-
-    val boxA = createBox(world, new Vec2(0, 4), hx = 1f, hy = 1f)
-    val boxB = createBox(world, new Vec2(1.5f, 10), hx = 1f, hy = 1f)
-    
-    val jointDef = new DistanceJointDef
-    
-    
-    jointDef.initialize(boxA, boxB, boxA.getPosition, boxB.getPosition);
-    jointDef.collideConnected = true;
-    
-    val joint = world.createJoint(jointDef)
-
-
-
 
     glClearColor(0.3f, 0.3f, 0.3f, 1f)
 
@@ -90,8 +83,9 @@ object Main extends SimpleSwingApplication {
     while(running) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-      world.step(1 / 60.0f, 10, 10)
-      world.drawDebugData()
+      Physics.update()
+      Physics.world.step(1 / 60.0f, 10, 10)
+      Physics.world.drawDebugData()
 
       array(ii) = System.currentTimeMillis()
       ii = (ii + 1) & 63
