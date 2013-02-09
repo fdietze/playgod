@@ -9,6 +9,7 @@ import org.jbox2d.common._
 import org.lwjgl.input.Keyboard._
 
 import swing._
+import event._
 import playgod.Box2DTools._
 
 class LWJGLComponent(dimension:java.awt.Dimension) extends Component {
@@ -25,7 +26,7 @@ object Main extends swing.SimpleSwingApplication {
 
   val renderArea = new LWJGLComponent(new Dimension(800,600))
   val top = new swing.MainFrame {
-    contents = new BoxPanel(swing.Orientation.Vertical) {
+    val panel = new BoxPanel(swing.Orientation.Vertical) {
       contents += new Button("Button") {
         action = new Action("click") {
           override def apply() {
@@ -34,10 +35,21 @@ object Main extends swing.SimpleSwingApplication {
         }
       }
       contents += renderArea
+      
+      requestFocus()
+      listenTo(keys)
+      reactions += {
+        case KeyPressed(_, Key.Escape, _, _) =>
+          quit()
+      }
+
     }
+    contents = panel
+    panel.requestFocus() // be able to listen to key events
   }
 
   Display.setParent(renderArea.canvas)
+  Display.setVSyncEnabled(false)
   Display.create()
 
   override def main(args:Array[String]) {
@@ -49,14 +61,8 @@ object Main extends swing.SimpleSwingApplication {
   world.setDebugDraw(DebugDrawer)
 
 
+  var running = true
   def start() {
-
-    println("starting...")
-
-
-
-
-
     import Box2DTools._
 
     createBox(world, new Vec2(0, -10), hx = 50, hy = 3, density = 0f)
@@ -64,13 +70,7 @@ object Main extends swing.SimpleSwingApplication {
     createBox(world, new Vec2(1.5f, 10), hx = 1f, hy = 1f)
 
 
-
-    //Display.setDisplayMode(new DisplayMode(800, 600))
-    //Display.create()
-
     glClearColor(0.3f, 0.3f, 0.3f, 1f)
-
-    println("after first opengl command")
 
     glMatrixMode(GL_PROJECTION_MATRIX)
     glLoadIdentity()
@@ -85,21 +85,19 @@ object Main extends swing.SimpleSwingApplication {
 
     var ii = 0
     val array = new Array[Long](64)
-
-    while (!Display.isCloseRequested() && !isKeyDown(KEY_ESCAPE)) {
+    while(running) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
       world.step(1 / 60.0f, 10, 10)
       world.drawDebugData()
 
-      Display.update()
-
-
-
       array(ii) = System.currentTimeMillis()
       ii = (ii + 1) & 63
       val time_s = 1 / ((array((ii - 1) & 63) - array(ii)) / 64000f)
       top.title = "%8.3ffps" format time_s
+
+      Display.update()
+      Display.sync(60)
     }
 
     Display.destroy()
