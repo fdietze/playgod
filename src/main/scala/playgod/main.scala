@@ -77,23 +77,34 @@ object Main extends SimpleSwingApplication {
     val n = -1f
     val f = 1f
     glScalef(1 / r, 1 / t, 1f)
-
-    var ii = 0
-    val array = new Array[Long](64)
+    
+    
+    val fps = 60
+    
+    def now = System.currentTimeMillis
+    var lastFpsUpdate = now
+    var frameCount = 0
+    def updateFps() {
+      frameCount += 1
+      val timeDiff = (now - lastFpsUpdate) / 1000.0
+      if( timeDiff > 1.0 ) {
+        val fps = frameCount / timeDiff
+        top.title = "%8.3ffps" format fps
+        frameCount = 0
+        lastFpsUpdate = now
+      }
+    }
+    
     while(running) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
       Physics.update()
-      Physics.world.step(1 / 60.0f, 10, 10)
+      Physics.world.step(1f / fps, 10, 10)
       Physics.world.drawDebugData()
 
-      array(ii) = System.currentTimeMillis()
-      ii = (ii + 1) & 63
-      val time_s = 1 / ((array((ii - 1) & 63) - array(ii)) / 64000f)
-      top.title = "%8.3ffps" format time_s
-
       Display.update()
-      Display.sync(60)
+      Display.sync(fps)
+      updateFps()
     }
 
     Display.destroy()
