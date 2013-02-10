@@ -24,14 +24,11 @@ object Main extends SimpleSwingApplication {
            }
           }
         }
-        val newAngleField = new TextField {
-          maximumSize = new Dimension(50,30)
-        }
-        contents += newAngleField
-        contents += new Button("Change Angle") {
-          action = new Action("Change Angle") {
+        contents += new Button("Random Angles") {
+          action = new Action("Random Angles") {
             override def apply() {
-              Physics.angleTarget = newAngleField.text.toFloat.toRadians
+              for( bone <- Physics.sample.jointBones )
+                bone.angleTarget = util.Random.nextDouble().toFloat * math.Pi.toFloat * 0.3f
            }
           }
         }
