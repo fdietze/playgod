@@ -7,6 +7,8 @@ import Box2DTools._
 
 import collection.mutable
 
+//TODO: disable self collision
+
 object Skeleton {
   def forky:Skeleton = {
     val hipBone = new RootBone(createBox(Physics.world, new Vec2(0, 6.5f), hx = 2.5f, hy = 0.5f))
@@ -54,13 +56,17 @@ class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone
   jointDef.motorSpeed = 0f
   jointDef.maxMotorTorque = 10000.0f
   jointDef.enableMotor = true
+  //jointDef.collideConnected = false
   val maxMotorSpeed = 5f
   val joint = Physics.world.createJoint(jointDef).asInstanceOf[RevoluteJoint]
   var angleTarget = joint.getJointAngle
   def counterSpeed(error:Float) = math.tanh(error).toFloat*maxMotorSpeed
   def update() {
     val angleError = angleTarget - joint.getJointAngle
-    joint.setMotorSpeed(counterSpeed(angleError))
+    // only set motorSpeed when necessary
+    // => allows deactivation
+    if( angleError.abs > 0.001f )
+      joint.setMotorSpeed(counterSpeed(angleError))
   }
 }
 
