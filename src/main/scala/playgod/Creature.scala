@@ -42,8 +42,36 @@ object Skeleton {
 }
 
 class Skeleton {
-  var rootBone:RootBone = null
-  val jointBones = new mutable.ArrayBuffer[JointBone]
+  val collisionGroupIndex = Physics.nextCollisionGroupIndex
+  private var _rootBone:RootBone = null
+  def rootBone = _rootBone
+  def rootBone_=(newBone:RootBone) {
+    setCollisionGroup(newBone)
+    _rootBone = newBone
+  }
+  
+  val jointBones = new mutable.ArrayBuffer[JointBone] {
+    override def += (newBone:JointBone) = {
+      setCollisionGroup(newBone)
+      super.+=(newBone)
+    }
+  }
+  
+  def bodies = (rootBone +: jointBones).map(_.body)
+  
+  private def setCollisionGroup(bone:Bone) {
+    // dont let bones collide in one skeleton
+    val filter = bone.body.getFixtureList.getFilterData
+    filter.groupIndex = collisionGroupIndex
+    bone.body.getFixtureList.setFilterData(filter)
+  }
+  
+  def addPosition(delta:Vec2) {
+    for( body <- bodies ) {
+      val transform = body.getTransform
+      body.setTransform(transform.position.add(delta), transform.getAngle)
+    }
+  }
   
   def update() { jointBones.foreach(_.update()) }
 }

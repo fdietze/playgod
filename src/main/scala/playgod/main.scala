@@ -27,9 +27,10 @@ object Main extends SimpleSwingApplication {
         contents += new Button("Random Angles") {
           action = new Action("Random Angles") {
             override def apply() {
-              for( bone <- Physics.sample.jointBones )
-                bone.angleTarget = (util.Random.nextFloat()*2f-1f) * math.Pi.toFloat * 0.5f
-           }
+              for( creature <- Physics.creatures )
+                for( bone <- creature.jointBones )
+                  bone.angleTarget = (util.Random.nextFloat()*2f-1f) * math.Pi.toFloat * 0.5f
+            }
           }
         }
       }
