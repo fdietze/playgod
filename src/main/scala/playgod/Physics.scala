@@ -19,9 +19,9 @@ object Physics {
   
   val ground = createBox(world, new Vec2(0, -20), hx = 50, hy = 3, density = 0f)
 
-  val creatures = Array.tabulate(30){ i =>
+  val creatures = Array.tabulate(4){ i =>
     val creature = Skeleton.forky
-    creature.addPosition(new Vec2(util.Random.nextGaussian.toFloat*10f,i*6))
+    creature.addPosition(new Vec2((i-2)*10f,5f))
     creature
   }
   

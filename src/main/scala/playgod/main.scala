@@ -65,7 +65,14 @@ object Main extends SimpleSwingApplication {
 
 
   var running = true
+  val fps = 60
   val box2DScale = 1f/16f
+  val r = 400 * box2DScale
+  val t = 300 * box2DScale
+  val n = -1f
+  val f = 1f
+  def mousePos = new Vec2(Mouse.getX,Mouse.getY)
+  def box2dMousePos = mousePos.mul(box2DScale).add(new Vec2(-r, -t))
   def start() {
     import Box2DTools._
 
@@ -76,14 +83,9 @@ object Main extends SimpleSwingApplication {
 
     glMatrixMode(GL_MODELVIEW_MATRIX)
     glLoadIdentity()
-    val r = 400 * box2DScale
-    val t = 300 * box2DScale
-    val n = -1f
-    val f = 1f
     glScalef(1 / r, 1 / t, 1f)
     
     
-    val fps = 60
     
     def now = System.currentTimeMillis
     var lastFpsUpdate = now
@@ -102,8 +104,6 @@ object Main extends SimpleSwingApplication {
     var mouseJoint:Option[MouseJoint] = None
     def processEvents() {
       import Mouse._
-      val mousePos = new Vec2(getX,getY)
-      val box2dMousePos = mousePos.mul(box2DScale).add(new Vec2(-r, -t))
       while( Mouse.next ) {
         ( getEventButton, getEventButtonState ) match {
           case (0 , true) => // left down

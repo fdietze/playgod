@@ -36,6 +36,21 @@ object Skeleton {
     skeleton.jointBones += backBone
     skeleton.jointBones += leftLeg
     skeleton.jointBones += rightLeg
+    skeleton.brain = Some(new Brain {
+      val inputs = Array(
+        new Sensor { def getValue = hipBone.body.getPosition.x },
+        new Sensor { def getValue = hipBone.body.getPosition.y },
+        new Sensor { def getValue = Main.box2dMousePos.x },
+        new Sensor { def getValue = Main.box2dMousePos.y }
+      )
+      val outputs = Array(
+        new Effector { def act(param:Double) { backBone.angleTarget = param.toFloat } },
+        new Effector { def act(param:Double) { leftLeg.angleTarget = param.toFloat } },
+        new Effector { def act(param:Double) { rightLeg.angleTarget = param.toFloat } }
+      )
+      
+      init()
+    })
     
     return skeleton
   }
@@ -43,6 +58,9 @@ object Skeleton {
 
 class Skeleton {
   val collisionGroupIndex = Physics.nextCollisionGroupIndex
+
+  var brain:Option[Brain] = None
+
   private var _rootBone:RootBone = null
   def rootBone = _rootBone
   def rootBone_=(newBone:RootBone) {
@@ -73,7 +91,11 @@ class Skeleton {
     }
   }
   
-  def update() { jointBones.foreach(_.update()) }
+  def update() {
+    if( brain.isDefined )
+      brain.get.compute()
+    jointBones.foreach(_.update())
+  }
 }
 
 abstract class Bone { val body:Body }
@@ -98,3 +120,37 @@ class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone
   }
 }
 
+abstract class Brain {
+  import org.encog.neural.networks.BasicNetwork
+  import org.encog.neural.networks.layers.BasicLayer
+  import org.encog.engine.network.activation.ActivationSigmoid
+
+  def inputs:Array[Sensor]
+  def outputs:Array[Effector]
+  
+  val network = new BasicNetwork()
+  
+  def init() {
+    network.addLayer(new BasicLayer(null,false, inputs.size))
+    network.addLayer(new BasicLayer(new ActivationSigmoid(),true,inputs.size))
+    network.addLayer(new BasicLayer(new ActivationSigmoid(),true,outputs.size))
+    network.getStructure().finalizeStructure()
+    network.reset()
+  }
+  
+  def compute() {
+    val inputValues = inputs.map(_.getValue)
+    val outputValues = new Array[Double](outputs.size)
+    network.compute(inputValues, outputValues)
+    for( (effector,param) <- outputs zip outputValues )
+      effector.act(param)
+  }
+}
+
+abstract class Sensor {
+  def getValue:Double
+}
+
+abstract class Effector {
+  def act(param:Double)
+}
