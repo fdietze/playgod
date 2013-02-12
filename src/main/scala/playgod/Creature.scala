@@ -38,16 +38,19 @@ object Skeleton {
     skeleton.jointBones += rightLeg
     skeleton.brain = Some(new Brain {
       val inputs = Array(
-        new Sensor { def getValue = hipBone.body.getAngle },
-        new Sensor { def getValue = hipBone.body.getPosition.x },
-        new Sensor { def getValue = hipBone.body.getPosition.y },
-        new Sensor { def getValue = Main.box2dMousePos.x },
-        new Sensor { def getValue = Main.box2dMousePos.y }
+        new Sensor { def getValue = hipBone.body.getLinearVelocity.x },
+        new Sensor { def getValue = hipBone.body.getLinearVelocity.y },
+        new Sensor { def getValue = hipBone.body.getAngularVelocity },
+        new Sensor { def getValue = math.cos(hipBone.body.getAngle) },
+        new Sensor { def getValue = math.sin(hipBone.body.getAngle) },
+        new Sensor { def getValue = hipBone.body.getPosition.y/20f }
+        //TODO: contact points
       )
+      def outToAngle(out:Double) = ((out * 2 - 1)*math.Pi*0.5).toFloat
       val outputs = Array(
-        new Effector { def act(param:Double) { backBone.angleTarget = param.toFloat } },
-        new Effector { def act(param:Double) { leftLeg.angleTarget = param.toFloat } },
-        new Effector { def act(param:Double) { rightLeg.angleTarget = param.toFloat } }
+        new Effector { def act(param:Double) { backBone.angleTarget = outToAngle(param) } },
+        new Effector { def act(param:Double) { leftLeg.angleTarget = outToAngle(param) } },
+        new Effector { def act(param:Double) { rightLeg.angleTarget = outToAngle(param) } }
       )
       
       init()
@@ -143,6 +146,7 @@ abstract class Brain {
     val inputValues = inputs.map(_.getValue)
     val outputValues = new Array[Double](outputs.size)
     network.compute(inputValues, outputValues)
+    //println(inputValues.mkString(",") +  " => " + outputValues.mkString(","))
     for( (effector,param) <- outputs zip outputValues )
       effector.act(param)
   }
