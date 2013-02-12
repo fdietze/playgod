@@ -65,7 +65,7 @@ object Main extends SimpleSwingApplication {
 
   var running = true
   val fps = 60
-  val box2DScale = 1f/16f
+  val box2DScale = 1f/8f
   val r = 400 * box2DScale
   val t = 300 * box2DScale
   val n = -1f

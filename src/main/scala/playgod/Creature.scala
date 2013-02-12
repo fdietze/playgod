@@ -6,6 +6,7 @@ import org.jbox2d.dynamics.joints._
 import Box2DTools._
 
 import collection.mutable
+import math._
 
 //TODO: disable self collision
 
@@ -37,16 +38,20 @@ object Skeleton {
     skeleton.jointBones += leftLeg
     skeleton.jointBones += rightLeg
     skeleton.brain = Some(new Brain {
-      val inputs = Array(
-        new Sensor { def getValue = hipBone.body.getLinearVelocity.x },
-        new Sensor { def getValue = hipBone.body.getLinearVelocity.y },
-        new Sensor { def getValue = hipBone.body.getAngularVelocity },
-        new Sensor { def getValue = math.cos(hipBone.body.getAngle) },
-        new Sensor { def getValue = math.sin(hipBone.body.getAngle) },
-        new Sensor { def getValue = hipBone.body.getPosition.y/20f }
+      val inputs:Array[Sensor] = Array(
+        new ClosureSensor(hipBone.body.getLinearVelocity.x),
+        new ClosureSensor(hipBone.body.getLinearVelocity.y),
+        new ClosureSensor(hipBone.body.getAngularVelocity),
+        new ClosureSensor(cos(hipBone.body.getAngle)),
+        new ClosureSensor(sin(hipBone.body.getAngle)),
+        new ClosureSensor(hipBone.body.getPosition.y/20f)
         //TODO: contact points
-      )
-      def outToAngle(out:Double) = ((out * 2 - 1)*math.Pi*0.5).toFloat
+      )/* ++ skeleton.jointBones.flatMap( bone => Array(
+        new ClosureSensor(cos(bone.joint.getJointAngle)),
+        new ClosureSensor(sin(bone.joint.getJointAngle))
+      ) )*/
+      
+      def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.5).toFloat
       val outputs = Array(
         new Effector { def act(param:Double) { backBone.angleTarget = outToAngle(param) } },
         new Effector { def act(param:Double) { leftLeg.angleTarget = outToAngle(param) } },
@@ -84,7 +89,7 @@ class Skeleton {
   private def setCollisionGroup(bone:Bone) {
     // dont let bones collide in one skeleton
     val filter = bone.body.getFixtureList.getFilterData
-    filter.groupIndex = collisionGroupIndex
+    filter.groupIndex = -collisionGroupIndex
     bone.body.getFixtureList.setFilterData(filter)
   }
   
@@ -114,7 +119,7 @@ class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone
   val maxMotorSpeed = 5f
   val joint = Physics.world.createJoint(jointDef).asInstanceOf[RevoluteJoint]
   var angleTarget = joint.getJointAngle
-  def counterSpeed(error:Float) = math.tanh(error).toFloat*maxMotorSpeed
+  def counterSpeed(error:Float) = tanh(error).toFloat*maxMotorSpeed
   def update() {
     val angleError = angleTarget - joint.getJointAngle
     // only set motorSpeed when necessary
@@ -154,6 +159,10 @@ abstract class Brain {
 
 abstract class Sensor {
   def getValue:Double
+}
+
+class ClosureSensor( f: => Double ) extends Sensor {
+  override def getValue = f
 }
 
 abstract class Effector {
