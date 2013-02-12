@@ -29,12 +29,11 @@ object Main extends SimpleSwingApplication {
            }
           }
         }
-        contents += new Button("Random Angles") {
-          action = new Action("Random Angles") {
+        contents += new Button("Random Brains") {
+          action = new Action("Random Brains") {
             override def apply() {
               for( creature <- Physics.creatures )
-                for( bone <- creature.jointBones )
-                  bone.angleTarget = (util.Random.nextFloat()*2f-1f) * math.Pi.toFloat * 0.5f
+                creature.brain.get.network.reset()
             }
           }
         }
@@ -124,8 +123,10 @@ object Main extends SimpleSwingApplication {
               }
             }, toleranceArea)
           case (0 , false) => // left up
-            Physics.world.destroyJoint(mouseJoint.get)
-            mouseJoint = None
+            if( mouseJoint.isDefined ) {
+              Physics.world.destroyJoint(mouseJoint.get)
+              mouseJoint = None
+            }
           case (1 , true) => // right down
           case (1 , false) => // right up
           case (-1, false) => // wheel

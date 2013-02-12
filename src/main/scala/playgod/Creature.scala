@@ -38,6 +38,7 @@ object Skeleton {
     skeleton.jointBones += rightLeg
     skeleton.brain = Some(new Brain {
       val inputs = Array(
+        new Sensor { def getValue = hipBone.body.getAngle },
         new Sensor { def getValue = hipBone.body.getPosition.x },
         new Sensor { def getValue = hipBone.body.getPosition.y },
         new Sensor { def getValue = Main.box2dMousePos.x },
