@@ -10,8 +10,8 @@ import math._
 
 //TODO: disable self collision
 
-object Skeleton {
-  def forky:Skeleton = {
+object CreatureFactory {
+  def forky:Creature = {
     val hipBone = new RootBone(createBox(Physics.world, new Vec2(0, 6.5f), hx = 2.5f, hy = 0.5f))
     
     val backBone = new JointBone(
@@ -32,12 +32,12 @@ object Skeleton {
       jointPos = new Vec2(2f,6.5f)
     )
     
-    val skeleton = new Skeleton
-    skeleton.rootBone = hipBone
-    skeleton.jointBones += backBone
-    skeleton.jointBones += leftLeg
-    skeleton.jointBones += rightLeg
-    skeleton.brain = Some(new Brain {
+    val creature = new Creature
+    creature.rootBone = hipBone
+    creature.jointBones += backBone
+    creature.jointBones += leftLeg
+    creature.jointBones += rightLeg
+    creature.brain = new Brain {
       val inputs:Array[Sensor] = Array(
         new ClosureSensor(hipBone.body.getLinearVelocity.x),
         new ClosureSensor(hipBone.body.getLinearVelocity.y),
@@ -46,7 +46,7 @@ object Skeleton {
         new ClosureSensor(sin(hipBone.body.getAngle)),
         new ClosureSensor(hipBone.body.getPosition.y/20f)
         //TODO: contact points
-      )/* ++ skeleton.jointBones.flatMap( bone => Array(
+      )/* ++ creature.jointBones.flatMap( bone => Array(
         new ClosureSensor(cos(bone.joint.getJointAngle)),
         new ClosureSensor(sin(bone.joint.getJointAngle))
       ) )*/
@@ -58,17 +58,21 @@ object Skeleton {
         new Effector { def act(param:Double) { rightLeg.angleTarget = outToAngle(param) } }
       )
       
+      def bonus = {
+        hipBone.body.getLinearVelocity.y
+      }
+      
       init()
-    })
+    }
     
-    return skeleton
+    return creature
   }
 }
 
-class Skeleton {
+class Creature {
   val collisionGroupIndex = Physics.nextCollisionGroupIndex
 
-  var brain:Option[Brain] = None
+  var brain:Brain = null
 
   private var _rootBone:RootBone = null
   def rootBone = _rootBone
@@ -87,7 +91,7 @@ class Skeleton {
   def bodies = (rootBone +: jointBones).map(_.body)
   
   private def setCollisionGroup(bone:Bone) {
-    // dont let bones collide in one skeleton
+    // dont let bones collide in one creature
     val filter = bone.body.getFixtureList.getFilterData
     filter.groupIndex = -collisionGroupIndex
     bone.body.getFixtureList.setFilterData(filter)
@@ -101,13 +105,28 @@ class Skeleton {
   }
   
   def update() {
-    if( brain.isDefined )
-      brain.get.compute()
+    brain.compute()
     jointBones.foreach(_.update())
+  }
+
+  def reset() {
+    brain.score = 0
+    rootBone.reset()
+    jointBones.foreach(_.reset())
   }
 }
 
-abstract class Bone { val body:Body }
+abstract class Bone {
+  val body:Body
+  val initialPosition = body.getPosition.clone
+  val initialAngle = body.getAngle
+  
+  def reset() {
+    body.setTransform(initialPosition.clone, initialAngle)
+    body.setLinearVelocity(new Vec2(0,0))
+    body.setAngularVelocity(0)
+  }
+}
 class RootBone(val body:Body) extends Bone
 class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone {
   val jointDef = new RevoluteJointDef
@@ -136,6 +155,10 @@ abstract class Brain {
 
   def inputs:Array[Sensor]
   def outputs:Array[Effector]
+  def bonus:Double
+
+  var score:Double = 0
+  
   
   val network = new BasicNetwork()
   
@@ -147,6 +170,17 @@ abstract class Brain {
     network.reset()
   }
   
+  def weightCount = network.getStructure.calculateSize
+  def getWeights = {
+    val weights = new Array[Double](weightCount)
+    network.encodeToArray(weights)
+    weights
+  }
+  
+  def replaceWeights(weights:Array[Double]) {
+    network.decodeFromArray(weights)
+  }
+  
   def compute() {
     val inputValues = inputs.map(_.getValue)
     val outputValues = new Array[Double](outputs.size)
@@ -154,6 +188,8 @@ abstract class Brain {
     //println(inputValues.mkString(",") +  " => " + outputValues.mkString(","))
     for( (effector,param) <- outputs zip outputValues )
       effector.act(param)
+    score += bonus
+    //print("\rScore: %8.3f, Bonus: %8.3f" format(score, bonus) )
   }
 }
 

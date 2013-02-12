@@ -32,8 +32,25 @@ object Main extends SimpleSwingApplication {
         contents += new Button("Random Brains") {
           action = new Action("Random Brains") {
             override def apply() {
-              for( creature <- Physics.creatures )
-                creature.brain.get.network.reset()
+              for( creature <- Physics.population.creatures )
+                creature.brain.network.reset()
+            }
+          }
+        }
+        contents += new Button("Reset") {
+          action = new Action("Reset") {
+            override def apply() {
+              for( creature <- Physics.population.creatures )
+                creature.reset()
+            }
+          }
+        }
+        contents += new Button("Evolution") {
+          action = new Action("Evolution") {
+            override def apply() {
+              Physics.population.evolution()
+              for( creature <- Physics.population.creatures )
+                creature.reset()
             }
           }
         }
@@ -65,7 +82,7 @@ object Main extends SimpleSwingApplication {
 
   var running = true
   val fps = 60
-  val box2DScale = 1f/8f
+  val box2DScale = 1f/10f
   val r = 400 * box2DScale
   val t = 300 * box2DScale
   val n = -1f

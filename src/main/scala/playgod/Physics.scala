@@ -17,15 +17,17 @@ object Physics {
   val world = new World(new Vec2(0, -9.81f), true)
   world.setDebugDraw(DebugDrawer)
   
-  val ground = createBox(world, new Vec2(0, -3), hx = 50, hy = 3, density = 0f)
+  val ground = createBox(world, new Vec2(0, -3), hx = 500, hy = 3, density = 0f)
 
-  val creatures = Array.tabulate(20){ i =>
-    val creature = Skeleton.forky
+  
+  val population = new Population
+  population.creatures = mutable.ArrayBuffer.tabulate(30){ i =>
+    val creature = CreatureFactory.forky
     creature.addPosition(new Vec2(0,3f))
     creature
   }
   
   def update() {
-    creatures.foreach(_.update())
+    population.creatures.foreach(_.update())
   }
 }
