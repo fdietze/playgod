@@ -1,11 +1,16 @@
 package playgod
 
 import org.lwjgl.opengl.GL11._
-
 import org.lwjgl.opengl.Display
 import org.lwjgl.opengl.DisplayMode
 import org.lwjgl.input.Keyboard._
+import org.lwjgl.input.Mouse
+
 import org.jbox2d.common._
+import org.jbox2d.collision.AABB
+import org.jbox2d.callbacks.QueryCallback
+import org.jbox2d.dynamics.Fixture
+import org.jbox2d.dynamics.joints.{MouseJoint, MouseJointDef}
 
 import swing._
 import event._
@@ -60,6 +65,7 @@ object Main extends SimpleSwingApplication {
 
 
   var running = true
+  val box2DScale = 1f/16f
   def start() {
     import Box2DTools._
 
@@ -70,8 +76,8 @@ object Main extends SimpleSwingApplication {
 
     glMatrixMode(GL_MODELVIEW_MATRIX)
     glLoadIdentity()
-    val r = 400 / 16f
-    val t = 300 / 16f
+    val r = 400 * box2DScale
+    val t = 300 * box2DScale
     val n = -1f
     val f = 1f
     glScalef(1 / r, 1 / t, 1f)
@@ -93,7 +99,50 @@ object Main extends SimpleSwingApplication {
       }
     }
     
+    var mouseJoint:Option[MouseJoint] = None
+    def processEvents() {
+      import Mouse._
+      val mousePos = new Vec2(getX,getY)
+      val box2dMousePos = mousePos.mul(box2DScale).add(new Vec2(-r, -t))
+      while( Mouse.next ) {
+        ( getEventButton, getEventButtonState ) match {
+          case (0 , true) => // left down
+            val tolerance = new Vec2(0.01f, 0.01f)
+            val toleranceArea = new AABB(box2dMousePos.sub(tolerance), box2dMousePos.add(tolerance))
+            Physics.world.queryAABB(new QueryCallback {
+              def reportFixture(fixture:Fixture):Boolean = {
+                val body = fixture.getBody
+                val mouseJointDef = new MouseJointDef
+                mouseJointDef.bodyA = Physics.ground
+                mouseJointDef.bodyB = body
+                mouseJointDef.target.set(box2dMousePos)
+                mouseJointDef.maxForce = 1000f * body.getMass
+                mouseJoint = Some(Physics.world.createJoint(mouseJointDef).asInstanceOf[MouseJoint])
+                body.setAwake(true)
+                
+                return false // cancel iteration
+              }
+            }, toleranceArea)
+          case (0 , false) => // left up
+            Physics.world.destroyJoint(mouseJoint.get)
+            mouseJoint = None
+          case (1 , true) => // right down
+          case (1 , false) => // right up
+          case (-1, false) => // wheel
+           // ( Mouse.getDWheel / 120 )
+          case _ =>
+        }
+      }
+      
+      if( mouseJoint.isDefined ) {
+        mouseJoint.get.setTarget(box2dMousePos)
+      }
+    }
+
+    
+    
     while(running) {
+      processEvents()
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
       Physics.update()

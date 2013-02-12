@@ -17,7 +17,7 @@ object Physics {
   val world = new World(new Vec2(0, -9.81f), true)
   world.setDebugDraw(DebugDrawer)
   
-  createBox(world, new Vec2(0, -20), hx = 50, hy = 3, density = 0f)
+  val ground = createBox(world, new Vec2(0, -20), hx = 50, hy = 3, density = 0f)
 
   val creatures = Array.tabulate(30){ i =>
     val creature = Skeleton.forky
