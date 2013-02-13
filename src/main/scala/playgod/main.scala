@@ -29,29 +29,14 @@ object Main extends SimpleSwingApplication {
            }
           }
         }
-        contents += new Button("Random Brains") {
-          action = new Action("Random Brains") {
-            override def apply() {
-              for( creature <- Physics.population.creatures )
-                creature.brain.network.reset()
-            }
-          }
-        }
-        contents += new Button("Reset") {
-          action = new Action("Reset") {
-            override def apply() {
-              for( creature <- Physics.population.creatures )
-                creature.reset()
-            }
-          }
-        }
-        contents += new Button("Evolution") {
-          action = new Action("Evolution") {
-            override def apply() {
-              Physics.population.evolution()
-              for( creature <- Physics.population.creatures )
-                creature.reset()
-            }
+        
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = "60"
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              fps = this.text.toInt
           }
         }
       }
@@ -81,7 +66,7 @@ object Main extends SimpleSwingApplication {
 
 
   var running = true
-  val fps = 60
+  var fps = 120
   var zoom = 1f/10f
   def r = 400 * zoom
   def t = 300 * zoom
@@ -170,7 +155,10 @@ object Main extends SimpleSwingApplication {
       
       while(Keyboard.next) {
         val key = Keyboard.getEventKey
-        if( key == Keyboard.KEY_E) Physics.population.evolution()
+        if( Keyboard.getEventKeyState ) {
+          if( key == Keyboard.KEY_E) Physics.population.evolution()
+          if( key == Keyboard.KEY_R) Physics.population.creatures.foreach(_.reset())
+        }
       }
     }
 
@@ -178,17 +166,19 @@ object Main extends SimpleSwingApplication {
     var i = 0
     while(running) {
       processEvents()
+
+      Physics.world.step(1f / 60f, 10, 10)
+      Physics.update()
+      
+      i += 1
+      if( i % 1500 == 0 ) Physics.population.evolution()
+
+
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
       glLoadIdentity()
       glScalef(1 / r, 1 / t, 1f)
       glTranslatef(translation.x*zoom, translation.y*zoom, 0)
-
-      Physics.update()
-      Physics.world.step(1f / fps, 10, 10)
       Physics.world.drawDebugData()
-      
-      i += 1
-      if( i % 1000 == 0 ) Physics.population.evolution()
 
       Display.update()
       Display.sync(fps)

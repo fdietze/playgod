@@ -12,9 +12,10 @@ object Box2DTools {
                 hx: Float = 1f,
                 hy: Float = 1f,
                 density: Float = 1f,
-                friction: Float = 0.3f,
+                friction: Float = 0.6f,
                 center: Vec2 = new Vec2(0, 0),
-                angle: Float = 0f) : Body = {
+                angle: Float = 0f,
+                collisionGroupIndex:Int = 0) : Body = {
     val bd = new BodyDef
     if (density != 0f) bd.`type` = BodyType.DYNAMIC
     bd.active = true
@@ -26,6 +27,7 @@ object Box2DTools {
     fixtureDef.shape = dynamicBox
     fixtureDef.density = density
     fixtureDef.friction = friction
+    fixtureDef.filter.groupIndex = collisionGroupIndex
     body.createFixture(fixtureDef)
     
     return body

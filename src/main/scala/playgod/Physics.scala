@@ -10,7 +10,7 @@ import collection.mutable
 object Physics {
   private var lastCollisionGroupIndex:Int = 1
   def nextCollisionGroupIndex:Int = {
-    //lastCollisionGroupIndex += 1
+    lastCollisionGroupIndex += 1
     return lastCollisionGroupIndex
   }
   
@@ -21,9 +21,8 @@ object Physics {
 
   
   val population = new Population
-  population.creatures = mutable.ArrayBuffer.tabulate(50){ i =>
+  population.creatures = mutable.ArrayBuffer.tabulate(20){ i =>
     val creature = CreatureFactory.forky
-    creature.addPosition(new Vec2(0,3f))
     creature
   }
   

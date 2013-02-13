@@ -12,31 +12,54 @@ import math._
 
 object CreatureFactory {
   def forky:Creature = {
-    val hipBone = new RootBone(createBox(Physics.world, new Vec2(0, 6.5f), hx = 2.5f, hy = 0.5f))
+    val collisionGroupIndex = -1 //Physics.nextCollisionGroupIndex
+    val hipBone = new RootBone(createBox(Physics.world, new Vec2(0, 7.5f), hx = 2.5f, hy = 0.5f,
+                                         collisionGroupIndex = collisionGroupIndex))
     
     val backBone = new JointBone(
-      createBox(Physics.world, new Vec2(0, 8.5f), hx = 0.5f, hy = 2.5f),
+      createBox(Physics.world, new Vec2(0, 9.5f), hx = 0.5f, hy = 2.5f,
+                collisionGroupIndex = collisionGroupIndex),
       parentBone = hipBone,
-      jointPos = new Vec2(0,6.5f)
+      jointPos = new Vec2(0,7.5f)
     )
 
     val leftLeg = new JointBone(
-      createBox(Physics.world, new Vec2(-2f, 4.5f), hx = 0.5f, hy = 2.5f),
+      createBox(Physics.world, new Vec2(-2f, 5.5f), hx = 0.5f, hy = 2.5f,
+                collisionGroupIndex = collisionGroupIndex),
       parentBone = hipBone,
-      jointPos = new Vec2(-2f,6.5f)
+      jointPos = new Vec2(-2f,7.5f)
+    )
+
+    val leftLowerLeg = new JointBone(
+      createBox(Physics.world, new Vec2(-2f, 2.5f), hx = 0.5f, hy = 1.5f,
+                collisionGroupIndex = collisionGroupIndex),
+      parentBone = leftLeg,
+      jointPos = new Vec2(-2f,3.5f)
     )
 
     val rightLeg = new JointBone(
-      createBox(Physics.world, new Vec2(2f, 4.5f), hx = 0.5f, hy = 2.5f),
+      createBox(Physics.world, new Vec2(2f, 5.5f), hx = 0.5f, hy = 2.5f,
+                collisionGroupIndex = collisionGroupIndex),
       parentBone = hipBone,
-      jointPos = new Vec2(2f,6.5f)
+      jointPos = new Vec2(2f,7.5f)
     )
+
+    val rightLowerLeg = new JointBone(
+      createBox(Physics.world, new Vec2(2f, 2.5f), hx = 0.5f, hy = 1.5f,
+                collisionGroupIndex = collisionGroupIndex),
+      parentBone = rightLeg,
+      jointPos = new Vec2(2f,3.5f)
+    )
+
     
     val creature = new Creature
     creature.rootBone = hipBone
     creature.jointBones += backBone
     creature.jointBones += leftLeg
     creature.jointBones += rightLeg
+    creature.jointBones += leftLowerLeg
+    creature.jointBones += rightLowerLeg
+    
     creature.brain = new Brain {
       val inputs:Array[Sensor] = Array(
         new ClosureSensor(hipBone.body.getLinearVelocity.x),
@@ -53,11 +76,9 @@ object CreatureFactory {
       ) )*/
       
       def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.5).toFloat
-      val outputs = Array(
-        new Effector { def act(param:Double) { backBone.angleTarget = outToAngle(param) } },
-        new Effector { def act(param:Double) { leftLeg.angleTarget = outToAngle(param) } },
-        new Effector { def act(param:Double) { rightLeg.angleTarget = outToAngle(param) } }
-      )
+      val outputs = creature.jointBones.map(
+        bone => new Effector { def act(param:Double) { bone.angleTarget = outToAngle(param) } }
+      ).toArray
       
       def bonus = {
         hipBone.body.getPosition.x
@@ -71,32 +92,22 @@ object CreatureFactory {
 }
 
 class Creature {
-  val collisionGroupIndex = Physics.nextCollisionGroupIndex
 
   var brain:Brain = null
 
   private var _rootBone:RootBone = null
   def rootBone = _rootBone
   def rootBone_=(newBone:RootBone) {
-    setCollisionGroup(newBone)
     _rootBone = newBone
   }
   
   val jointBones = new mutable.ArrayBuffer[JointBone] {
     override def += (newBone:JointBone) = {
-      setCollisionGroup(newBone)
       super.+=(newBone)
     }
   }
   
   def bodies = (rootBone +: jointBones).map(_.body)
-  
-  private def setCollisionGroup(bone:Bone) {
-    // dont let bones collide in one creature
-    val filter = bone.body.getFixtureList.getFilterData
-    filter.groupIndex = -collisionGroupIndex
-    bone.body.getFixtureList.setFilterData(filter)
-  }
   
   def addPosition(delta:Vec2) {
     for( body <- bodies ) {
@@ -121,11 +132,11 @@ abstract class Bone {
   val body:Body
   val initialPosition = body.getPosition.clone
   val initialAngle = body.getAngle
-  
   def reset() {
-    body.setTransform(initialPosition.clone, initialAngle)
     body.setLinearVelocity(new Vec2(0,0))
     body.setAngularVelocity(0)
+    body.setTransform(initialPosition.clone, initialAngle)
+    body.setAwake(true)
   }
 }
 class RootBone(val body:Body) extends Bone
@@ -147,6 +158,12 @@ class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone
     if( angleError.abs > 0.001f )
       joint.setMotorSpeed(counterSpeed(angleError))
   }
+  
+  override def reset() {
+    angleTarget = 0
+    joint.setMotorSpeed(0f)
+    super.reset()
+  }
 }
 
 abstract class Brain {
@@ -166,16 +183,18 @@ abstract class Brain {
   def init() {
     network.addLayer(new BasicLayer(null,false, inputs.size))
     network.addLayer(new BasicLayer(new ActivationSigmoid(),true,inputs.size))
+    network.addLayer(new BasicLayer(new ActivationSigmoid(),true,inputs.size))
     network.addLayer(new BasicLayer(new ActivationSigmoid(),true,outputs.size))
     network.getStructure().finalizeStructure()
-    network.reset()
+    val randomizer = new org.encog.mathutil.randomize.GaussianRandomizer(0,1)
+    randomizer.randomize(network)
   }
   
-  def weightCount = network.getStructure.calculateSize
+  def weightCount = network.encodedArrayLength
   def getWeights = {
     val weights = new Array[Double](weightCount)
     network.encodeToArray(weights)
-    weights
+    weights.clone
   }
   
   def replaceWeights(weights:Array[Double]) {
