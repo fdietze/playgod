@@ -26,5 +26,6 @@ class Population {
 
       brain.replaceWeights(newWeights)
     }
+    creatures.foreach(_.reset())
  }
 }

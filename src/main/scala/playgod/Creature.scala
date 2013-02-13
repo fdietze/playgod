@@ -41,7 +41,8 @@ object CreatureFactory {
       val inputs:Array[Sensor] = Array(
         new ClosureSensor(hipBone.body.getLinearVelocity.x),
         new ClosureSensor(hipBone.body.getLinearVelocity.y),
-        new ClosureSensor(hipBone.body.getAngularVelocity),
+        new ClosureSensor(sin(hipBone.body.getAngularVelocity)),
+        new ClosureSensor(cos(hipBone.body.getAngularVelocity)),
         new ClosureSensor(cos(hipBone.body.getAngle)),
         new ClosureSensor(sin(hipBone.body.getAngle)),
         new ClosureSensor(hipBone.body.getPosition.y/20f)
@@ -59,7 +60,7 @@ object CreatureFactory {
       )
       
       def bonus = {
-        hipBone.body.getLinearVelocity.y
+        hipBone.body.getPosition.x
       }
       
       init()

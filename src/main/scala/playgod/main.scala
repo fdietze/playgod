@@ -3,7 +3,7 @@ package playgod
 import org.lwjgl.opengl.GL11._
 import org.lwjgl.opengl.Display
 import org.lwjgl.opengl.DisplayMode
-import org.lwjgl.input.Keyboard._
+import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 
 import org.jbox2d.common._
@@ -82,13 +82,14 @@ object Main extends SimpleSwingApplication {
 
   var running = true
   val fps = 60
-  val box2DScale = 1f/10f
-  val r = 400 * box2DScale
-  val t = 300 * box2DScale
+  var zoom = 1f/10f
+  def r = 400 * zoom
+  def t = 300 * zoom
   val n = -1f
   val f = 1f
+  var translation = new Vec2(0,0)
   def mousePos = new Vec2(Mouse.getX,Mouse.getY)
-  def box2dMousePos = mousePos.mul(box2DScale).add(new Vec2(-r, -t))
+  def box2dMousePos = mousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
   def start() {
     import Box2DTools._
 
@@ -98,8 +99,6 @@ object Main extends SimpleSwingApplication {
     glLoadIdentity()
 
     glMatrixMode(GL_MODELVIEW_MATRIX)
-    glLoadIdentity()
-    glScalef(1 / r, 1 / t, 1f)
     
     
     
@@ -118,6 +117,7 @@ object Main extends SimpleSwingApplication {
     }
     
     var mouseJoint:Option[MouseJoint] = None
+    var dragging = false
     def processEvents() {
       import Mouse._
       while( Mouse.next ) {
@@ -139,15 +139,23 @@ object Main extends SimpleSwingApplication {
                 return false // cancel iteration
               }
             }, toleranceArea)
+            if( !mouseJoint.isDefined ) {
+              dragging = true
+            }
           case (0 , false) => // left up
             if( mouseJoint.isDefined ) {
               Physics.world.destroyJoint(mouseJoint.get)
               mouseJoint = None
             }
+            dragging = false
           case (1 , true) => // right down
           case (1 , false) => // right up
           case (-1, false) => // wheel
-           // ( Mouse.getDWheel / 120 )
+            val delta = Mouse.getDWheel
+            if( delta > 0 )
+              zoom /= 1.1f
+            else if( delta < 0 )
+              zoom *= 1.1f
           case _ =>
         }
       }
@@ -155,17 +163,32 @@ object Main extends SimpleSwingApplication {
       if( mouseJoint.isDefined ) {
         mouseJoint.get.setTarget(box2dMousePos)
       }
+      if( dragging ) {
+        translation.x += getDX
+        translation.y += getDY
+      }
+      
+      while(Keyboard.next) {
+        val key = Keyboard.getEventKey
+        if( key == Keyboard.KEY_E) Physics.population.evolution()
+      }
     }
 
     
-    
+    var i = 0
     while(running) {
       processEvents()
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+      glLoadIdentity()
+      glScalef(1 / r, 1 / t, 1f)
+      glTranslatef(translation.x*zoom, translation.y*zoom, 0)
 
       Physics.update()
       Physics.world.step(1f / fps, 10, 10)
       Physics.world.drawDebugData()
+      
+      i += 1
+      if( i % 1000 == 0 ) Physics.population.evolution()
 
       Display.update()
       Display.sync(fps)
