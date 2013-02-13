@@ -21,7 +21,7 @@ object Physics {
 
   
   val population = new Population
-  population.creatures = mutable.ArrayBuffer.tabulate(20){ i =>
+  population.creatures = mutable.ArrayBuffer.tabulate(30){ i =>
     val creature = CreatureFactory.forky
     creature
   }

@@ -66,7 +66,7 @@ object Main extends SimpleSwingApplication {
 
 
   var running = true
-  var fps = 120
+  var fps = 60
   var zoom = 1f/10f
   def r = 400 * zoom
   def t = 300 * zoom
@@ -171,7 +171,7 @@ object Main extends SimpleSwingApplication {
       Physics.update()
       
       i += 1
-      if( i % 1500 == 0 ) Physics.population.evolution()
+      if( i % 3000 == 0 ) Physics.population.evolution()
 
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)

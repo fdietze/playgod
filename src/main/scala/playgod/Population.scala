@@ -17,15 +17,15 @@ class Population {
   def rDouble = util.Random.nextDouble
   
   def evolution() {
-    val n = (creatures.size * 0.2).ceil.toInt
+    val n = (creatures.size * 0.3).ceil.toInt
     val newBrains = brains.sortBy(_.score).reverse
     val best = newBrains.take(n)
     val worst = newBrains.drop(n)
     for( (brain,i) <- worst zipWithIndex ) {
-      val newWeights = best(rInt % best.size).getWeights
+      val newWeights = best(i % best.size).getWeights
       
       for( i <- 0 until newWeights.size ) {
-        newWeights(i) += rGaussian*0.2
+        newWeights(i) += rGaussian*0.1
       }
 
       brain.replaceWeights(newWeights)

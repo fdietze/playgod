@@ -61,19 +61,15 @@ object CreatureFactory {
     creature.jointBones += rightLowerLeg
     
     creature.brain = new Brain {
-      val inputs:Array[Sensor] = Array(
-        new ClosureSensor(hipBone.body.getLinearVelocity.x),
-        new ClosureSensor(hipBone.body.getLinearVelocity.y),
-        new ClosureSensor(sin(hipBone.body.getAngularVelocity)),
-        new ClosureSensor(cos(hipBone.body.getAngularVelocity)),
-        new ClosureSensor(cos(hipBone.body.getAngle)),
-        new ClosureSensor(sin(hipBone.body.getAngle)),
-        new ClosureSensor(hipBone.body.getPosition.y/20f)
-        //TODO: contact points
-      )/* ++ creature.jointBones.flatMap( bone => Array(
-        new ClosureSensor(cos(bone.joint.getJointAngle)),
-        new ClosureSensor(sin(bone.joint.getJointAngle))
-      ) )*/
+      val inputs:Array[Sensor] = creature.bodies.flatMap( body => Array(
+        new ClosureSensor(body.getLinearVelocity.x),
+        new ClosureSensor(body.getLinearVelocity.y),
+        new ClosureSensor(sin(body.getAngularVelocity)),
+        new ClosureSensor(cos(body.getAngularVelocity)),
+        new ClosureSensor(sin(body.getAngle)),
+        new ClosureSensor(cos(body.getAngle)),
+        new ClosureSensor(body.getPosition.y/20f)
+      ) ).toArray
       
       def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.5).toFloat
       val outputs = creature.jointBones.map(
