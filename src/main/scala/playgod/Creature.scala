@@ -71,7 +71,7 @@ object CreatureFactory {
         new ClosureSensor(body.getPosition.y/20f)
       ) ).toArray
       
-      def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.5).toFloat
+      def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.3).toFloat
       val outputs = creature.jointBones.map(
         bone => new Effector { def act(param:Double) { bone.angleTarget = outToAngle(param) } }
       ).toArray
@@ -82,7 +82,6 @@ object CreatureFactory {
       
       init()
     }
-    
     return creature
   }
 }
@@ -140,10 +139,10 @@ class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone
   val jointDef = new RevoluteJointDef
   jointDef.initialize(body, parentBone.body, jointPos)
   jointDef.motorSpeed = 0f
-  jointDef.maxMotorTorque = 10000.0f
+  jointDef.maxMotorTorque = 5000.0f
   jointDef.enableMotor = true
   //jointDef.collideConnected = false
-  val maxMotorSpeed = 5f
+  val maxMotorSpeed = 3f
   val joint = Physics.world.createJoint(jointDef).asInstanceOf[RevoluteJoint]
   var angleTarget = joint.getJointAngle
   def counterSpeed(error:Float) = tanh(error).toFloat*maxMotorSpeed
