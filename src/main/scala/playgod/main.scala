@@ -30,13 +30,14 @@ object Main extends SimpleSwingApplication {
           }
         }
         
+        contents += new Label("Substeps: ")
         contents += new TextField {
           maximumSize = new Dimension(50,50)
-          text = "60"
+          text = "1"
           listenTo(this)
           reactions += {
             case e:EditDone =>
-              fps = this.text.toInt
+              subSteps = this.text.toInt
           }
         }
       }
@@ -66,7 +67,9 @@ object Main extends SimpleSwingApplication {
 
 
   var running = true
-  var fps = 60
+  val fps = 60
+  val box2dStep = 1f / 60f
+  var subSteps = 1
   var zoom = 1f/10f
   def r = 400 * zoom
   def t = 300 * zoom
@@ -166,13 +169,14 @@ object Main extends SimpleSwingApplication {
     var i = 0
     while(running) {
       processEvents()
-
-      Physics.world.step(1f / 60f, 10, 10)
-      Physics.update()
       
-      i += 1
-      if( i % 3000 == 0 ) Physics.population.evolution()
-
+      for( _ <- 0 until subSteps ) {
+        Physics.world.step(box2dStep, 10, 10)
+        Physics.update()
+        
+        i += 1
+        if( i % 3000 == 0 ) Physics.population.evolution()
+      }
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
       glLoadIdentity()
