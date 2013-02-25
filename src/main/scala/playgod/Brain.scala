@@ -10,7 +10,6 @@ class BrainDefinition(
     val brain = new Brain(inputs.map(_.create(boneMap)), outputs.map(_.create(boneMap)), bonus)
     if( initialWeights.isDefined ) {
       brain.replaceWeights(initialWeights.get)
-      println("initial weights")
     }
     brain
   }

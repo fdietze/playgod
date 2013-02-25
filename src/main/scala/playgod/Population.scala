@@ -38,7 +38,7 @@ class Population(val creatureDef:CreatureDefinition, val count:Int) {
       val newWeights = best(i % best.size).weights
       
       for( j <- 0 until weights.size )
-        weights(j) += newWeights(j) + rGaussian*0.0001
+        weights(j) = newWeights(j) + rGaussian*0.05
     }
 
     for( (BrainData(weights,_), i) <- brainData zipWithIndex )
