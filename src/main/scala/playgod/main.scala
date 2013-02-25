@@ -30,7 +30,7 @@ object Main extends SimpleSwingApplication {
            }
           }
         }*/
-        
+
         contents += new Label("Substeps: ")
         contents += new TextField {
           maximumSize = new Dimension(50,50)
@@ -39,6 +39,17 @@ object Main extends SimpleSwingApplication {
           reactions += {
             case e:EditDone =>
               subSteps = this.text.toInt
+          }
+        }
+
+        contents += new Label("Generation life time: ")
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = "1000"
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              generationLifeTime = this.text.toInt
           }
         }
       }
@@ -71,6 +82,8 @@ object Main extends SimpleSwingApplication {
   val fps = 60
 
   var subSteps = 1
+  var generationLifeTime = 1000
+  var generation = 0
   var zoom = 1f/10f
   def r = 400 * zoom
   def t = 300 * zoom
@@ -176,7 +189,12 @@ object Main extends SimpleSwingApplication {
         population.update()
         
         i += 1
-        if( i % 3000 == 0 ) population.nextGeneration()
+        if( i % generationLifeTime == 0 ) {
+          println("generation: %d, maxScore: %s" format (
+            generation, population.brains.maxBy(_.score).score))
+          population.nextGeneration()
+          generation += 1
+        }
       }
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
