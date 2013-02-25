@@ -12,7 +12,7 @@ class CreatureSimulation(
   val world = new World(new Vec2(0, -9.81f), true)
   world.setDebugDraw(DebugDrawer)
 
-  val ground = createBox(world, new Vec2(0, -3), hx = 500, hy = 3, density = 0f)
+  val ground = createBox(world, new Vec2(0, -3), hx = 500, hy = 3, density = 0f, friction = 1f)
   val creature = creatureDef.create(world, brainWeights)
 
   override def update() {

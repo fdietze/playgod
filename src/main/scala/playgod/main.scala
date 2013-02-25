@@ -166,7 +166,7 @@ object Main extends SimpleSwingApplication {
       }
     }
 
-    val population = new Population(CreatureFactory.forky, 30)
+    val population = new Population(CreatureFactory.forky)
 
     var i = 0
     while(running) {
