@@ -7,6 +7,22 @@ import org.jbox2d.callbacks.DebugDraw
 import org.lwjgl.opengl.GL11._
 
 object Box2DTools {
+
+  object MathHelpers {
+    type Vec2 = org.jbox2d.common.Vec2
+    object Vec2 {
+      @inline def apply(x:Float, y:Float) = new Vec2(x,y)
+      @inline def apply(x:Float) = new Vec2(x,x)
+    }
+
+    implicit class RichVec2(v:Vec2) {
+      def +(that:Vec2) = v.add(that)
+      def -(that:Vec2) = v.sub(that)
+      def *(that:Float) = v.mul(that)
+      def :=(that:Vec2) = v.set(that.x, that.y)
+    }
+  }
+
   def createBox(world: World,
                 pos: Vec2,
                 hx: Float = 1f,
@@ -20,14 +36,16 @@ object Box2DTools {
     if (density != 0f) bd.`type` = BodyType.DYNAMIC
     bd.active = true
     bd.position.set(pos)
-    val body = world.createBody(bd)
+
+    val fixtureDef = new FixtureDef
     val dynamicBox = new PolygonShape
     dynamicBox.setAsBox(hx, hy, center, angle)
-    val fixtureDef = new FixtureDef
     fixtureDef.shape = dynamicBox
     fixtureDef.density = density
     fixtureDef.friction = friction
     fixtureDef.filter.groupIndex = collisionGroupIndex
+
+    val body = world.createBody(bd)
     body.createFixture(fixtureDef)
     
     return body

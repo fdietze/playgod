@@ -1,125 +1,148 @@
 package playgod
 
-import org.jbox2d.common._
 import org.jbox2d.dynamics._
 import org.jbox2d.dynamics.joints._
 import Box2DTools._
+import Box2DTools.MathHelpers._
 
 import collection.mutable
 import math._
-
-//TODO: disable self collision
+import org.jbox2d.collision.shapes.PolygonShape
 
 object CreatureFactory {
-  def forky:Creature = {
-    val collisionGroupIndex = -1 //Physics.nextCollisionGroupIndex
-    val hipBone = new RootBone(createBox(Physics.world, new Vec2(0, 7.5f), hx = 2.5f, hy = 0.5f,
-                                         collisionGroupIndex = collisionGroupIndex))
+  def forky:CreatureDefinition = {
+    val hipBone = new RootBoneDefinition(pos = Vec2(0, 7.5f), width = 5f, height = 1f)
+    val backBone = new JointBoneDefinition(pos = Vec2(0, 9.5f), width = 1f, height = 5f,
+      parentBone = hipBone, jointPos = Vec2(0,7.5f))
+    val leftLeg = new JointBoneDefinition(pos = Vec2(-2f, 5.5f), width = 1f, height = 5f,
+      parentBone = hipBone, jointPos = Vec2(-2f,7.5f))
+    val leftLowerLeg = new JointBoneDefinition(pos = Vec2(-2f, 2.5f), width = 1f, height = 3f,
+      parentBone = leftLeg, jointPos = Vec2(-2f,3.5f))
+    val rightLeg = new JointBoneDefinition(pos = Vec2(2f, 5.5f), width = 1f, height = 5f,
+      parentBone = hipBone, jointPos = Vec2(2f,7.5f))
+    val rightLowerLeg = new JointBoneDefinition(pos = Vec2(2f, 2.5f), width = 1f, height = 3f,
+      parentBone = rightLeg, jointPos = Vec2(2f,3.5f))
+
+    def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.3).toFloat
+    val brain = new BrainDefinition(
+      inputs = Array(hipBone, backBone, leftLeg, leftLowerLeg, rightLeg, rightLowerLeg).flatMap( bone => Array(
+        new BoneSensorDefinition(bone, (b) => b.body.getLinearVelocity.x),
+        new BoneSensorDefinition(bone, (b) => b.body.getLinearVelocity.y),
+        new BoneSensorDefinition(bone, (b) => sin(b.body.getAngularVelocity)),
+        new BoneSensorDefinition(bone, (b) => cos(b.body.getAngularVelocity)),
+        new BoneSensorDefinition(bone, (b) => sin(b.body.getAngle)),
+        new BoneSensorDefinition(bone, (b) => cos(b.body.getAngle)),
+        new BoneSensorDefinition(bone, (b) => b.body.getPosition.y/20f)
+      ) ),
+      outputs = Array(backBone, leftLeg, leftLowerLeg, rightLeg, rightLowerLeg).flatMap( bone => Array(
+        new BoneEffectorDefinition(bone, (b, a) => {b.asInstanceOf[JointBone].angleTarget = outToAngle(a)}))
+      ),
+      bonus = (c) => c.boneMap(hipBone).body.getPosition.x
+    )
+
+    val creatureDef = new CreatureDefinition(brain, hipBone,
+      backBone, leftLeg, rightLeg, leftLowerLeg, rightLowerLeg)
     
-    val backBone = new JointBone(
-      createBox(Physics.world, new Vec2(0, 9.5f), hx = 0.5f, hy = 2.5f,
-                collisionGroupIndex = collisionGroupIndex),
-      parentBone = hipBone,
-      jointPos = new Vec2(0,7.5f)
-    )
-
-    val leftLeg = new JointBone(
-      createBox(Physics.world, new Vec2(-2f, 5.5f), hx = 0.5f, hy = 2.5f,
-                collisionGroupIndex = collisionGroupIndex),
-      parentBone = hipBone,
-      jointPos = new Vec2(-2f,7.5f)
-    )
-
-    val leftLowerLeg = new JointBone(
-      createBox(Physics.world, new Vec2(-2f, 2.5f), hx = 0.5f, hy = 1.5f,
-                collisionGroupIndex = collisionGroupIndex),
-      parentBone = leftLeg,
-      jointPos = new Vec2(-2f,3.5f)
-    )
-
-    val rightLeg = new JointBone(
-      createBox(Physics.world, new Vec2(2f, 5.5f), hx = 0.5f, hy = 2.5f,
-                collisionGroupIndex = collisionGroupIndex),
-      parentBone = hipBone,
-      jointPos = new Vec2(2f,7.5f)
-    )
-
-    val rightLowerLeg = new JointBone(
-      createBox(Physics.world, new Vec2(2f, 2.5f), hx = 0.5f, hy = 1.5f,
-                collisionGroupIndex = collisionGroupIndex),
-      parentBone = rightLeg,
-      jointPos = new Vec2(2f,3.5f)
-    )
-
-    
-    val creature = new Creature
-    creature.rootBone = hipBone
-    creature.jointBones += backBone
-    creature.jointBones += leftLeg
-    creature.jointBones += rightLeg
-    creature.jointBones += leftLowerLeg
-    creature.jointBones += rightLowerLeg
-    
-    creature.brain = new Brain {
-      val inputs:Array[Sensor] = creature.bodies.flatMap( body => Array(
-        new ClosureSensor(body.getLinearVelocity.x),
-        new ClosureSensor(body.getLinearVelocity.y),
-        new ClosureSensor(sin(body.getAngularVelocity)),
-        new ClosureSensor(cos(body.getAngularVelocity)),
-        new ClosureSensor(sin(body.getAngle)),
-        new ClosureSensor(cos(body.getAngle)),
-        new ClosureSensor(body.getPosition.y/20f)
-      ) ).toArray
-      
-      def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.3).toFloat
-      val outputs = creature.jointBones.map(
-        bone => new Effector { def act(param:Double) { bone.angleTarget = outToAngle(param) } }
-      ).toArray
-      
-      def bonus = {
-        hipBone.body.getPosition.x
-      }
-      
-      init()
-    }
-    return creature
+    return creatureDef
   }
 }
 
-class Creature {
+class Creature(
+    val brain:Brain,
+    val boneMap:mutable.Map[BoneDefinition, Bone],
+    val rootBone:RootBone,
+    val jointBones:JointBone*
+    ) {
 
-  var brain:Brain = null
-
-  private var _rootBone:RootBone = null
-  def rootBone = _rootBone
-  def rootBone_=(newBone:RootBone) {
-    _rootBone = newBone
-  }
-  
-  val jointBones = new mutable.ArrayBuffer[JointBone] {
-    override def += (newBone:JointBone) = {
-      super.+=(newBone)
-    }
-  }
-  
   def bodies = (rootBone +: jointBones).map(_.body)
   
-  def addPosition(delta:Vec2) {
-    for( body <- bodies ) {
-      val transform = body.getTransform
-      body.setTransform(transform.position.add(delta), transform.getAngle)
-    }
-  }
-  
   def update() {
-    brain.compute()
+    brain.update(this)
     jointBones.foreach(_.update())
   }
 
   def reset() {
-    brain.score = 0
     rootBone.reset()
     jointBones.foreach(_.reset())
+    brain.update(this)
+    brain.score = 0
+  }
+}
+
+class CreatureDefinition(
+    val brainDefinition:BrainDefinition,
+    val rootBoneDefinition:RootBoneDefinition,
+    val jointBoneDefinitions:JointBoneDefinition*
+    ) {
+
+  def create(world:World, initialBrainWeights:Option[Array[Double]] = None) = {
+    val boneMap = new mutable.HashMap[BoneDefinition,Bone]
+    val rootBone = rootBoneDefinition.createBone(world, boneMap)
+    val jointBones = jointBoneDefinitions.map(_.createBone(world, boneMap))
+    val creature = new Creature(
+      brainDefinition.create(boneMap, initialBrainWeights),
+      boneMap,
+      rootBone,
+      jointBones:_*
+    )
+    creature
+  }
+}
+
+class BoneDefinition(pos: Vec2,
+                     width: Float = 1f,
+                     height: Float = 1f,
+                     angle: Float = 0f) extends ObjectDefinition {
+  val density = 1f
+  val friction = 1f
+  val center = Vec2(0,0)
+  val collisionGroupIndex = 0
+
+  val bodyDef = new BodyDef
+  if (density != 0f) bodyDef.`type` = BodyType.DYNAMIC
+  bodyDef.active = true
+  bodyDef.position.set(pos)
+
+  val fixtureDef = new FixtureDef
+  private val dynamicBox = new PolygonShape
+  dynamicBox.setAsBox(width*0.5f, height*0.5f, center, angle)
+  fixtureDef.shape = dynamicBox
+  fixtureDef.density = density
+  fixtureDef.friction = friction
+  fixtureDef.filter.groupIndex = collisionGroupIndex
+}
+
+class RootBoneDefinition( pos: Vec2,
+                          width: Float = 1f,
+                          height: Float = 1f,
+                          angle: Float = 0f) extends BoneDefinition(pos, width, height, angle) {
+  def createBone(world:World, boneMap:mutable.Map[BoneDefinition,Bone]) = {
+    val newBone = new RootBone(super.create(world))
+    boneMap += (this -> newBone)
+    newBone
+  }
+}
+
+class JointBoneDefinition(pos: Vec2,
+                     width: Float = 1f,
+                     height: Float = 1f,
+                     angle: Float = 0f,
+                     parentBone:BoneDefinition,
+                     jointPos: Vec2) extends BoneDefinition(pos, width, height, angle) {
+  val jointDef = new RevoluteJointDef
+  jointDef.motorSpeed = 0f
+  jointDef.maxMotorTorque = 5000.0f
+  jointDef.enableMotor = true
+  //jointDef.collideConnected = false
+
+  def createBone(world:World, boneMap:mutable.Map[BoneDefinition,Bone]) = {
+    val body = super.create(world)
+    jointDef.initialize(body, boneMap(parentBone).body, jointPos)
+    val joint = world.createJoint(jointDef).asInstanceOf[RevoluteJoint]
+
+    val newBone = new JointBone(body, joint)
+    boneMap += (this -> newBone)
+    newBone
   }
 }
 
@@ -134,18 +157,12 @@ abstract class Bone {
     body.setAwake(true)
   }
 }
+
 class RootBone(val body:Body) extends Bone
-class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone {
-  val jointDef = new RevoluteJointDef
-  jointDef.initialize(body, parentBone.body, jointPos)
-  jointDef.motorSpeed = 0f
-  jointDef.maxMotorTorque = 5000.0f
-  jointDef.enableMotor = true
-  //jointDef.collideConnected = false
+class JointBone(val body:Body, val joint:RevoluteJoint ) extends Bone {
   val maxMotorSpeed = 3f
-  val joint = Physics.world.createJoint(jointDef).asInstanceOf[RevoluteJoint]
   var angleTarget = joint.getJointAngle
-  def counterSpeed(error:Float) = tanh(error).toFloat*maxMotorSpeed
+  def counterSpeed(error:Float) = math.tanh(error).toFloat*maxMotorSpeed
   def update() {
     val angleError = angleTarget - joint.getJointAngle
     // only set motorSpeed when necessary
@@ -159,63 +176,4 @@ class JointBone(val body:Body, parentBone:Bone, val jointPos:Vec2 ) extends Bone
     joint.setMotorSpeed(0f)
     super.reset()
   }
-}
-
-abstract class Brain {
-  import org.encog.neural.networks.BasicNetwork
-  import org.encog.neural.networks.layers.BasicLayer
-  import org.encog.engine.network.activation.ActivationSigmoid
-
-  def inputs:Array[Sensor]
-  def outputs:Array[Effector]
-  def bonus:Double
-
-  var score:Double = 0
-  
-  
-  val network = new BasicNetwork()
-  
-  def init() {
-    network.addLayer(new BasicLayer(null,false, inputs.size))
-    network.addLayer(new BasicLayer(new ActivationSigmoid(),true,inputs.size))
-    network.addLayer(new BasicLayer(new ActivationSigmoid(),true,inputs.size))
-    network.addLayer(new BasicLayer(new ActivationSigmoid(),true,outputs.size))
-    network.getStructure().finalizeStructure()
-    val randomizer = new org.encog.mathutil.randomize.GaussianRandomizer(0,1)
-    randomizer.randomize(network)
-  }
-  
-  def weightCount = network.encodedArrayLength
-  def getWeights = {
-    val weights = new Array[Double](weightCount)
-    network.encodeToArray(weights)
-    weights.clone
-  }
-  
-  def replaceWeights(weights:Array[Double]) {
-    network.decodeFromArray(weights)
-  }
-  
-  def compute() {
-    val inputValues = inputs.map(_.getValue)
-    val outputValues = new Array[Double](outputs.size)
-    network.compute(inputValues, outputValues)
-    //println(inputValues.mkString(",") +  " => " + outputValues.mkString(","))
-    for( (effector,param) <- outputs zip outputValues )
-      effector.act(param)
-    score += bonus
-    //print("\rScore: %8.3f, Bonus: %8.3f" format(score, bonus) )
-  }
-}
-
-abstract class Sensor {
-  def getValue:Double
-}
-
-class ClosureSensor( f: => Double ) extends Sensor {
-  override def getValue = f
-}
-
-abstract class Effector {
-  def act(param:Double)
 }

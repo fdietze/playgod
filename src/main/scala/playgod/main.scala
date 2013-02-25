@@ -15,6 +15,7 @@ import org.jbox2d.dynamics.joints.{MouseJoint, MouseJointDef}
 import swing._
 import event._
 import Box2DTools._
+import collection.mutable
 
 object Main extends SimpleSwingApplication {
 
@@ -22,13 +23,13 @@ object Main extends SimpleSwingApplication {
   val top = new swing.MainFrame {
     val panel = new BoxPanel(Orientation.Vertical) {
       contents += new BoxPanel(Orientation.Horizontal) {
-        contents += new Button("Random Box") {
+        /*contents += new Button("Random Box") {
           action = new Action("Random Box") {
             override def apply() {
               createBox(Physics.world, new Vec2(util.Random.nextGaussian().toFloat, 10), hx = 1f, hy = 1f)
            }
           }
-        }
+        }*/
         
         contents += new Label("Substeps: ")
         contents += new TextField {
@@ -68,7 +69,7 @@ object Main extends SimpleSwingApplication {
 
   var running = true
   val fps = 60
-  val box2dStep = 1f / 60f
+
   var subSteps = 1
   var zoom = 1f/10f
   def r = 400 * zoom
@@ -113,26 +114,26 @@ object Main extends SimpleSwingApplication {
           case (0 , true) => // left down
             val tolerance = new Vec2(0.01f, 0.01f)
             val toleranceArea = new AABB(box2dMousePos.sub(tolerance), box2dMousePos.add(tolerance))
-            Physics.world.queryAABB(new QueryCallback {
+            /*Physics.world.queryAABB(new QueryCallback {
               def reportFixture(fixture:Fixture):Boolean = {
                 val body = fixture.getBody
                 val mouseJointDef = new MouseJointDef
-                mouseJointDef.bodyA = Physics.ground
+                //mouseJointDef.bodyA = Physics.ground
                 mouseJointDef.bodyB = body
                 mouseJointDef.target.set(box2dMousePos)
                 mouseJointDef.maxForce = 1000f * body.getMass
-                mouseJoint = Some(Physics.world.createJoint(mouseJointDef).asInstanceOf[MouseJoint])
+                //mouseJoint = Some(Physics.world.createJoint(mouseJointDef).asInstanceOf[MouseJoint])
                 body.setAwake(true)
                 
                 return false // cancel iteration
               }
-            }, toleranceArea)
+            }, toleranceArea)*/
             if( !mouseJoint.isDefined ) {
               dragging = true
             }
           case (0 , false) => // left up
             if( mouseJoint.isDefined ) {
-              Physics.world.destroyJoint(mouseJoint.get)
+              //Physics.world.destroyJoint(mouseJoint.get)
               mouseJoint = None
             }
             dragging = false
@@ -159,30 +160,31 @@ object Main extends SimpleSwingApplication {
       while(Keyboard.next) {
         val key = Keyboard.getEventKey
         if( Keyboard.getEventKeyState ) {
-          if( key == Keyboard.KEY_E) Physics.population.evolution()
-          if( key == Keyboard.KEY_R) Physics.population.creatures.foreach(_.reset())
+          //if( key == Keyboard.KEY_E) Physics.population.evolution()
+          //if( key == Keyboard.KEY_R) Physics.population.creatures.foreach(_.reset())
         }
       }
     }
 
-    
+    val population = new Population(CreatureFactory.forky, 30)
+
     var i = 0
     while(running) {
       processEvents()
       
       for( _ <- 0 until subSteps ) {
-        Physics.world.step(box2dStep, 10, 10)
-        Physics.update()
+        population.update()
         
         i += 1
-        if( i % 3000 == 0 ) Physics.population.evolution()
+        if( i % 3000 == 0 ) population.nextGeneration()
       }
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
       glLoadIdentity()
       glScalef(1 / r, 1 / t, 1f)
       glTranslatef(translation.x*zoom, translation.y*zoom, 0)
-      Physics.world.drawDebugData()
+
+      population.draw()
 
       Display.update()
       Display.sync(fps)

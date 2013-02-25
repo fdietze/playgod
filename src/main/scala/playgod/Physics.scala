@@ -7,26 +7,25 @@ import Box2DTools._
 
 import collection.mutable
 
-object Physics {
-  private var lastCollisionGroupIndex:Int = 1
-  def nextCollisionGroupIndex:Int = {
-    lastCollisionGroupIndex += 1
-    return lastCollisionGroupIndex
-  }
-  
-  val world = new World(new Vec2(0, -9.81f), true)
-  world.setDebugDraw(DebugDrawer)
-  
-  val ground = createBox(world, new Vec2(0, -3), hx = 500, hy = 3, density = 0f)
+abstract class Simulation {
+  def world:World
+  def update() {}
+}
 
-  
-  val population = new Population
-  population.creatures = mutable.ArrayBuffer.tabulate(30){ i =>
-    val creature = CreatureFactory.forky
-    creature
+abstract class ObjectDefinition {
+  def bodyDef:BodyDef
+  def fixtureDef:FixtureDef
+  def create(world:World):Body = {
+    val body = world.createBody(bodyDef)
+    body.createFixture(fixtureDef)
+    return body
   }
-  
-  def update() {
-    population.creatures.foreach(_.update())
-  }
+}
+
+object Physics {
+  val timeStep = 1f / 60f
+
+  def step(simulations:Seq[Simulation]) { simulations.foreach(_.world.step(timeStep, 10, 10)) }
+  def update(simulations:Seq[Simulation]) { simulations.foreach(_.update()) }
+  def debugDraw(simulations:Seq[Simulation]) { simulations.foreach(_.world.drawDebugData()) }
 }
