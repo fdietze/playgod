@@ -159,8 +159,9 @@ abstract class Bone {
 }
 
 class RootBone(val body:Body) extends Bone
+
 class JointBone(val body:Body, val joint:RevoluteJoint ) extends Bone {
-  val maxMotorSpeed = 3f
+  val maxMotorSpeed = 2f
   var angleTarget = joint.getJointAngle
   def counterSpeed(error:Float) = math.tanh(error).toFloat*maxMotorSpeed
   def update() {

@@ -25,7 +25,7 @@ abstract class ObjectDefinition {
 object Physics {
   val timeStep = 1f / 60f
 
-  def step(simulations:Seq[Simulation]) { simulations.foreach(_.world.step(timeStep, 10, 10)) }
-  def update(simulations:Seq[Simulation]) { simulations.foreach(_.update()) }
+  def step(simulations:Seq[Simulation]) { simulations.par.foreach(_.world.step(timeStep, 10, 10)) }
+  def update(simulations:Seq[Simulation]) { simulations.par.foreach(_.update()) }
   def debugDraw(simulations:Seq[Simulation]) { simulations.foreach(_.world.drawDebugData()) }
 }
