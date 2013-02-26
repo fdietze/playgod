@@ -11,9 +11,10 @@ import math._
 class Population(val creatureDef:CreatureDefinition) {
   val populationSize = 30
   val parentCount = 2 //TODO: crossover with more parents
-  val crossOverProbability = 0.6
-  val mutationProbability = 0.05
-  val elitism = 1
+  val crossOverProbability = 0.8
+  val mutationProbability = 0.1
+  val mutationStrength = 0.1
+  val elitism = 0.1
 
   val creatures = Array.fill(populationSize){new CreatureSimulation(creatureDef)}
   def brains = creatures map (_.creature.brain)
@@ -48,28 +49,36 @@ class Population(val creatureDef:CreatureDefinition) {
     def addWeights(weights:Array[Double]) {
       for( (weight,i) <- weights zipWithIndex ) {
         if( inCase(mutationProbability) )
-          weights(i) = weight + rGaussian*0.1
+          weights(i) = weight + rGaussian*mutationStrength
       }
       newWeights += weights
     }
 
-    newWeights ++= sortedWeights.take(elitism)
+    newWeights ++= sortedWeights.take(ceil(elitism*populationSize).toInt)
     while( newWeights.size < populationSize ) {
       if( populationSize - newWeights.size >= 2 ) {
         val parentA = rouletteWheelSelection(sortedData, (e:BrainData) => e.score)
         val parentB = rouletteWheelSelection(sortedData, (e:BrainData) => e.score)
         val childWeights = if( inCase(crossOverProbability) ) {
           val crossOverPoint = rInt % parentA.weights.size
-          Array(
+          val childA = parentA.weights.clone
+          val childB = parentB.weights.clone
+          for( i <- 0 until childA.size )
+            if( inCase(0.5) ) {
+              childA(i) = parentB.weights(i)
+              childB(i) = parentA.weights(i)
+            }
+          /*Array(
            parentA.weights.take(crossOverPoint) ++ parentB.weights.drop(crossOverPoint),
            parentB.weights.take(crossOverPoint) ++ parentA.weights.drop(crossOverPoint)
-          )
+          )*/
+          Array(childA, childB)
         } else {
-          Array(parentA.weights, parentB.weights)
+          Array(parentA.weights.clone, parentB.weights.clone)
         }
         childWeights.foreach(addWeights)
       } else {
-        addWeights(sortedWeights(rInt % populationSize))
+        addWeights(sortedWeights(rInt % populationSize).clone)
       }
     }
 
