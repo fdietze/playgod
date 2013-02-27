@@ -3,11 +3,14 @@ package playgod
 import collection.mutable
 
 class BrainDefinition(
-                       val inputs:Array[BoneSensorDefinition],
+                       val inputs:Array[SensorDefinition],
                        val outputs:Array[BoneEffectorDefinition],
                        val bonus:Creature => Double) {
   def create(boneMap:mutable.Map[BoneDefinition,Bone], initialWeights:Option[Array[Double]] = None) = {
-    val brain = new Brain(inputs.map(_.create(boneMap)), outputs.map(_.create(boneMap)), bonus)
+    val brain = new Brain(inputs.map{
+      case s:BoneSensorDefinition => s.create(boneMap)
+      case s:Sensor => s
+    }, outputs.map(_.create(boneMap)), bonus)
     if( initialWeights.isDefined ) {
       brain.replaceWeights(initialWeights.get)
     }
@@ -58,11 +61,13 @@ class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], bonus:Creatur
   }
 }
 
-abstract class Sensor {
+abstract class SensorDefinition
+
+abstract class Sensor extends SensorDefinition {
   def getValue:Double
 }
 
-class BoneSensorDefinition( val boneDefinition:BoneDefinition, val extractValue:Bone => Double ) {
+class BoneSensorDefinition( val boneDefinition:BoneDefinition, val extractValue:Bone => Double ) extends SensorDefinition {
   def create(boneMap:mutable.Map[BoneDefinition,Bone]) = new BoneSensor(boneMap(boneDefinition), extractValue)
 }
 

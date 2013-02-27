@@ -18,11 +18,45 @@ import Box2DTools._
 import collection.mutable
 
 object Main extends SimpleSwingApplication {
+  
+  val width = 800
+  val height = 600
+  
+  var running = true
+  val fps = 60
+  
+  var zoom = 1f/10f
+  def r = width * 0.5f * zoom
+  def t = height * 0.5f * zoom
+  val n = -1f
+  val f = 1f
+  var translation = new Vec2(0,0)
+  def mousePos = new Vec2(Mouse.getX,Mouse.getY)
+  def box2dMousePos = mousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
 
-  val renderArea = new LWJGLComponent(new Dimension(800,600))
+  var subSteps = 1
+  val obstacleCount = 10
+  var generationLifeTime = 2000
+  var generation = 0
+
+  var arrowDirection = 0
+  var autoArrowDirections = true
+  def arrowChangeInterval = generationLifeTime / 4
+
+  val population = new Population(CreatureFactory.forky)
+  val bestScoreStats = new mutable.ArrayBuffer[Double]
+  val worstScoreStats = new mutable.ArrayBuffer[Double]
+
+  val statsHeight = 0.1f
+  val statsRange = 30
+
+
+  val renderArea = new LWJGLComponent(new Dimension(width, height))
+  val drawBestCheckBox = new CheckBox("draw best")
   val top = new swing.MainFrame {
     val panel = new BoxPanel(Orientation.Vertical) {
       contents += new BoxPanel(Orientation.Horizontal) {
+        contents += drawBestCheckBox
         /*contents += new Button("Random Box") {
           action = new Action("Random Box") {
             override def apply() {
@@ -31,10 +65,10 @@ object Main extends SimpleSwingApplication {
           }
         }*/
 
-        contents += new Label("Substeps: ")
+        contents += new Label("substeps: ")
         contents += new TextField {
           maximumSize = new Dimension(50,50)
-          text = "1"
+          text = subSteps.toString
           listenTo(this)
           reactions += {
             case e:EditDone =>
@@ -42,14 +76,69 @@ object Main extends SimpleSwingApplication {
           }
         }
 
-        contents += new Label("Generation life time: ")
+        contents += new Label("age: ")
         contents += new TextField {
           maximumSize = new Dimension(50,50)
-          text = "1000"
+          text = generationLifeTime.toString
           listenTo(this)
           reactions += {
             case e:EditDone =>
               generationLifeTime = this.text.toInt
+          }
+        }
+
+        contents += new Label("popsize: ")
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = population.populationSize.toString
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              population.populationSize = this.text.toInt
+          }
+        }
+
+        contents += new Label("cross %: ")
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = population.crossoverProbability.toString
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              population.crossoverProbability = this.text.toDouble
+          }
+        }
+
+        contents += new Label("mut %: ")
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = population.mutationProbability.toString
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              population.mutationProbability = this.text.toDouble
+          }
+        }
+
+        contents += new Label("mut: ")
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = population.mutationStrength.toString
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              population.mutationStrength = this.text.toDouble
+          }
+        }
+
+        contents += new Label("elitism: ")
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = population.elitism.toString
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              population.elitism = this.text.toDouble
           }
         }
       }
@@ -75,23 +164,48 @@ object Main extends SimpleSwingApplication {
     super.main(args)
     start()
   }
+  
+  def drawStats() {
+    if( bestScoreStats.size <= 1 ) return
+    def bestData = bestScoreStats.takeRight(statsRange)
+    def worstData = worstScoreStats.takeRight(statsRange)
+    
+    val min = worstData.min
+    val max = bestData.max
+    val range = max - min
+    
+    val padding = 0.01f
+
+    glPushMatrix()
 
 
+    glLoadIdentity()
+    glTranslatef(-1, -1, 0)
+    glScalef(2f, 2f, 1f)
 
-  var running = true
-  val fps = 60
+    glBegin(GL_LINES)
+      glColor3f(91f/255f, 177f/255f, 189f/255f)
+      glVertex2f(0, (1-2*padding-statsHeight).toFloat)
+      glVertex2f(1, (1-2*padding-statsHeight).toFloat)
+    glEnd()
 
-  var subSteps = 1
-  var generationLifeTime = 1000
-  var generation = 0
-  var zoom = 1f/10f
-  def r = 400 * zoom
-  def t = 300 * zoom
-  val n = -1f
-  val f = 1f
-  var translation = new Vec2(0,0)
-  def mousePos = new Vec2(Mouse.getX,Mouse.getY)
-  def box2dMousePos = mousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
+    glBegin(GL_LINE_STRIP)
+      glColor3f(148f/255f, 232f/255f, 242f/255f)
+      for( (score, i) <- bestData zipWithIndex )
+      glVertex2f(i.toFloat/(bestData.size-1), (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
+    glEnd()
+
+    glBegin(GL_LINE_STRIP)
+      glColor3f(242f/255f, 200f/255f, 148f/255f)
+      for( (score, i) <- worstData zipWithIndex )
+      glVertex2f(i.toFloat/(worstData.size-1), (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
+    glEnd()
+
+    glPopMatrix()
+    
+  }
+
+
   def start() {
     import Box2DTools._
 
@@ -172,26 +286,47 @@ object Main extends SimpleSwingApplication {
       
       while(Keyboard.next) {
         val key = Keyboard.getEventKey
-        if( Keyboard.getEventKeyState ) {
+        if( Keyboard.getEventKeyState ) { // Key down
           //if( key == Keyboard.KEY_E) Physics.population.evolution()
           //if( key == Keyboard.KEY_R) Physics.population.creatures.foreach(_.reset())
+          if( key == Keyboard.KEY_LEFT) arrowDirection = -1
+          if( key == Keyboard.KEY_RIGHT) arrowDirection = 1
+          if( key == Keyboard.KEY_A) autoArrowDirections = !autoArrowDirections
+        } else { // Key up
+          if( key == Keyboard.KEY_LEFT) arrowDirection = 0
+          if( key == Keyboard.KEY_RIGHT) arrowDirection = 0
         }
+        println("arrowDirection: " + arrowDirection)
       }
     }
 
-    val population = new Population(CreatureFactory.forky)
-
     var i = 0
+    var lastBestScore = Double.MinValue
     while(running) {
       processEvents()
       
       for( _ <- 0 until subSteps ) {
+        if( autoArrowDirections ) {
+          val t = i % (2 * arrowChangeInterval)
+          if( t < arrowChangeInterval ) arrowDirection = -1
+          else /*if( t < arrowChangeInterval*2 )*/ arrowDirection = 1
+          //else /*if( t < arrowChangeInterval*3 )*/ arrowDirection = 0
+          //println("i: %d arrowDirection: " + arrowDirection)
+        }
+        
+        
         population.update()
         
         i += 1
         if( i % generationLifeTime == 0 ) {
-          println("generation: %d, maxScore: %s" format (
-            generation, population.brains.maxBy(_.score).score))
+          val bestScore = population.brains.maxBy(_.score).score
+          val worstScore = population.brains.minBy(_.score).score
+          if( bestScore != lastBestScore ) {
+            println("generation: %d, maxScore: %s" format (generation, bestScore))
+            lastBestScore = bestScore
+          }
+          bestScoreStats += bestScore
+          worstScoreStats += worstScore
           population.nextGeneration()
           generation += 1
         }
@@ -202,7 +337,8 @@ object Main extends SimpleSwingApplication {
       glScalef(1 / r, 1 / t, 1f)
       glTranslatef(translation.x*zoom, translation.y*zoom, 0)
 
-      population.draw()
+      population.draw(drawBestCheckBox.selected)
+      drawStats()
 
       Display.update()
       Display.sync(fps)

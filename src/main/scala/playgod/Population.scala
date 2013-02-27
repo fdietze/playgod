@@ -9,15 +9,16 @@ import collection.mutable
 import math._
 
 class Population(val creatureDef:CreatureDefinition) {
-  val populationSize = 30
+  var populationSize = 30
   val parentCount = 2 //TODO: crossover with more parents
-  val crossOverProbability = 0.8
-  val mutationProbability = 0.1
-  val mutationStrength = 0.1
-  val elitism = 0.1
+  var crossoverProbability = 0.8
+  var mutationProbability = 0.1
+  var mutationStrength = 0.1
+  var elitism = 0.1
 
-  val creatures = Array.fill(populationSize){new CreatureSimulation(creatureDef)}
+  var creatures = Array.fill(populationSize){new CreatureSimulation(creatureDef)}
   def brains = creatures map (_.creature.brain)
+  def bestCreature = creatures.maxBy(_.creature.brain.score)
 
   def rInt = util.Random.nextInt.abs
   def rGaussian = util.Random.nextGaussian
@@ -56,10 +57,10 @@ class Population(val creatureDef:CreatureDefinition) {
 
     newWeights ++= sortedWeights.take(ceil(elitism*populationSize).toInt)
     while( newWeights.size < populationSize ) {
-      if( populationSize - newWeights.size >= 2 ) {
+      if( sortedWeights.size - newWeights.size >= 2 ) {
         val parentA = rouletteWheelSelection(sortedData, (e:BrainData) => e.score)
         val parentB = rouletteWheelSelection(sortedData, (e:BrainData) => e.score)
-        val childWeights = if( inCase(crossOverProbability) ) {
+        val childWeights = if( inCase(crossoverProbability) ) {
           val crossOverPoint = rInt % parentA.weights.size
           val childA = parentA.weights.clone
           val childB = parentB.weights.clone
@@ -78,11 +79,14 @@ class Population(val creatureDef:CreatureDefinition) {
         }
         childWeights.foreach(addWeights)
       } else {
-        addWeights(sortedWeights(rInt % populationSize).clone)
+        addWeights(sortedWeights(rInt % sortedWeights.size).clone)
       }
     }
-
-    for( (weights,i) <- newWeights zipWithIndex )
+    
+    if( creatures.size != populationSize )
+      creatures = Array.fill(populationSize){new CreatureSimulation(creatureDef)}
+    
+    for( (weights,i) <- newWeights zip (0 until populationSize) )
       creatures(i) = new CreatureSimulation(creatureDef, Some(weights))
   }
 
@@ -91,7 +95,10 @@ class Population(val creatureDef:CreatureDefinition) {
     Physics.step(creatures)
   }
 
-  def draw() {
-    Physics.debugDraw(creatures)
+  def draw(drawBest:Boolean = false) {
+    if( drawBest )
+      Physics.debugDraw(Array(bestCreature))
+    else
+      Physics.debugDraw(creatures)
   }
 }

@@ -23,7 +23,7 @@ object CreatureFactory {
     val rightLowerLeg = new JointBoneDefinition(pos = Vec2(2f, 2.5f), width = 1f, height = 3f,
       parentBone = rightLeg, jointPos = Vec2(2f,3.5f))
 
-    def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.3).toFloat
+    def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.5).toFloat
     val brain = new BrainDefinition(
       inputs = Array(hipBone, backBone, leftLeg, leftLowerLeg, rightLeg, rightLowerLeg).flatMap( bone => Array(
         new BoneSensorDefinition(bone, (b) => b.body.getLinearVelocity.x),
@@ -33,11 +33,28 @@ object CreatureFactory {
         new BoneSensorDefinition(bone, (b) => sin(b.body.getAngle)),
         new BoneSensorDefinition(bone, (b) => cos(b.body.getAngle)),
         new BoneSensorDefinition(bone, (b) => b.body.getPosition.y/20f)
-      ) ),
+      ) ) /*++ Array(
+        new ClosureSensor( Main.arrowDirection.toDouble )
+      )*/,
       outputs = Array(backBone, leftLeg, leftLowerLeg, rightLeg, rightLowerLeg).flatMap( bone => Array(
         new BoneEffectorDefinition(bone, (b, a) => {b.asInstanceOf[JointBone].angleTarget = outToAngle(a)}))
       ),
-      bonus = (c) => c.boneMap(hipBone).body.getPosition.x
+      bonus = { c =>
+        c.boneMap(hipBone).body.getPosition.x
+
+
+        //val error = (c.boneMap(hipBone).body.getAngle - Pi).abs
+        //-error
+
+
+        /*var error = 0.0
+        var bonus = 0.0
+        error += (Main.arrowDirection*3 - c.boneMap(hipBone).body.getLinearVelocity.x).abs
+        error += c.boneMap(hipBone).body.getAngle.abs
+        bonus += c.boneMap(hipBone).body.getPosition.y/30f
+        
+        bonus-error*/
+      }
     )
 
     val creatureDef = new CreatureDefinition(brain, hipBone,
