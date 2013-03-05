@@ -41,7 +41,7 @@ object Main extends SimpleSwingApplication {
 
   var arrowDirection = 0
   var autoArrowDirections = true
-  var generationLifeTime = 500//creature.maxLifetime
+  def generationLifeTime = creature.maxSimulationSteps
   def arrowChangeInterval = generationLifeTime / 6
 
   val creature = new refactoring.Box2DCreature
@@ -54,7 +54,7 @@ object Main extends SimpleSwingApplication {
 
 
   val renderArea = new LWJGLComponent(new Dimension(width, height))
-  val drawBestCheckBox = new CheckBox("draw best")
+  val drawBestCheckBox = new CheckBox("draw elite")
   val top = new swing.MainFrame {
     val panel = new BoxPanel(Orientation.Vertical) {
       contents += new BoxPanel(Orientation.Horizontal) {
@@ -81,11 +81,11 @@ object Main extends SimpleSwingApplication {
         contents += new Label("age: ")
         contents += new TextField {
           maximumSize = new Dimension(50,50)
-          text = generationLifeTime.toString
+          text = creature.maxSimulationSteps.toString
           listenTo(this)
           reactions += {
             case e:EditDone =>
-              generationLifeTime = this.text.toInt
+              creature.maxSimulationSteps = this.text.toInt
           }
         }
 
@@ -223,13 +223,18 @@ object Main extends SimpleSwingApplication {
     def now = System.currentTimeMillis
     var lastFpsUpdate = now
     var frameCount = 0
+    var stepCount = 0
     def updateFps() {
       frameCount += 1
+      //stepcount is updated in while loop
       val timeDiff = (now - lastFpsUpdate) / 1000.0
       if( timeDiff > 1.0 ) {
         val fps = frameCount / timeDiff
-        top.title = "%8.3ffps" format fps
+        val stepsps = stepCount / timeDiff
+        val generationTime = (generationLifeTime * population.populationSize) / stepsps
+        top.title = "%8.0fsteps/s  %3.1fs/generation  %8.3ffps" format (stepsps, generationTime, fps)
         frameCount = 0
+        stepCount = 0
         lastFpsUpdate = now
       }
     }
@@ -319,9 +324,11 @@ object Main extends SimpleSwingApplication {
         
         //population.update()
         population.organisms.par.foreach(_.asInstanceOf[Box2DSimulationOrganism].step())
+        stepCount += population.populationSize
         
         i += 1
         if( i % generationLifeTime == 0 ) {
+          population.organisms.par.foreach(_.asInstanceOf[Box2DSimulationOrganism].finish()) 
           val bestScore = population.organisms.maxBy(_.fitness).fitness
           val avgScore = population.organisms.map(_.fitness).sum / population.populationSize
           if( bestScore != lastBestScore ) {
@@ -340,8 +347,10 @@ object Main extends SimpleSwingApplication {
       glScalef(1 / r, 1 / t, 1f)
       glTranslatef(translation.x*zoom, translation.y*zoom, 0)
 
-      //population.draw(drawBestCheckBox.selected)
-      population.organisms.foreach(_.asInstanceOf[Box2DSimulationOrganism].debugDraw())
+      if( drawBestCheckBox.selected )
+        population.organisms.filter(_.genome.isElite).foreach(_.asInstanceOf[Box2DSimulationOrganism].debugDraw())
+      else
+        population.organisms.foreach(_.asInstanceOf[Box2DSimulationOrganism].debugDraw())
       drawStats()
 
       Display.update()

@@ -109,6 +109,8 @@ class Genome(val chromosomes:SortedMap[String,Chromosome]) extends MapProxy[Stri
       }
     (update(offspringGenesA), update(offspringGenesB))
   }
+
+  var isElite = false
 }
 
 abstract class Organism {
@@ -130,18 +132,24 @@ abstract class SimulationOrganism extends Organism {
   def penalty = 0.0
   def simulationStep()
 
-  val maxLifetime = playgod.Main.generationLifeTime
-  var age = 0
-  var score = 0.0
+  val maxSteps = 500
+  private var age = 0
+  private var score = 0.0
 
   def step() {
-    if ( age < maxLifetime ) {
+    if ( age < maxSteps ) {
       simulationStep()
       age += 1
       score += reward - penalty
+
+      if( age >= maxSteps )
+        fitness = score / age
     }
-    if( age >= maxLifetime )
-      fitness = score / age
+  }
+  
+  def finish() {
+    while( age < maxSteps )
+      step()
   }
 }
 
@@ -232,8 +240,8 @@ class JointBone(world:World, length:Float, thickness:Float, parent:Bone, jointAt
 class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWeights:Option[Array[Double]] = None) {
   val network = new BasicNetwork()
   network.addLayer(new BasicLayer(null,false, inputs.size))
-  network.addLayer(new BasicLayer(new ActivationTANH(),true,inputs.size + outputs.size/2))
-  network.addLayer(new BasicLayer(new ActivationTANH(),true,inputs.size + outputs.size/2))
+  network.addLayer(new BasicLayer(new ActivationTANH(),true,inputs.size))
+  network.addLayer(new BasicLayer(new ActivationTANH(),true,inputs.size))
   network.addLayer(new BasicLayer(new ActivationTANH(),true,outputs.size))
   network.getStructure.finalizeStructure()
   val randomizer = new org.encog.mathutil.randomize.GaussianRandomizer(0,1)
@@ -308,8 +316,11 @@ class Box2DCreature extends Creature {
   gb("brain") = dummyBrain.getWeights
 
   var genome = gb.toGenome
+  var maxSimulationSteps = 500
   def currentGenome = genome
-
+  
+  println("genes: %d (%d synapses)" format(genome.genes.size, genome[PlainChromosome]("brain").size))
+  
   def create(n:Int) = {
     for( _ <- 0 until n) yield {
       dummyBrain.randomizeWeights()
@@ -320,6 +331,7 @@ class Box2DCreature extends Creature {
   }
 
   def create = new Box2DSimulationOrganism {
+    override val maxSteps = maxSimulationSteps
     val genome = currentGenome
     //val sk = genome[NamedChromosome]("skeleton")
     val brainGenes = genome[PlainChromosome]("brain")
@@ -335,8 +347,8 @@ class Box2DCreature extends Creature {
     val rightFoot = new JointBone(world, length = sk("footLength").abs*10, thickness = 1, parent = rightLeg, jointAttach = 1f, restAngle = PI*sk("footRestAngle"), maxMotorTorque = sk("footMotorTorque").abs*5000, maxMotorSpeed = sk("footMotorSpeed").abs*3)
     val bones = Array(hipBone, backBone, leftLeg, leftFoot, rightLeg, rightFoot)
     val jointBones = Array(backBone, leftLeg, leftFoot, rightLeg, rightFoot)*/
-    val head      = new RootBone(world, length = 2, thickness = 2, pos = Vec2(0,15), angle = 0.0)
-    val back      = new JointBone(world, length = 7, thickness = 1, parent = head, jointAttach = 0, restAngle = -0.5*PI, maxMotorTorque = 5000, maxMotorSpeed = 3f)
+    val head      = new RootBone(world, length = 2, thickness = 2, pos = Vec2(0,3), angle = 0)
+    val back      = new JointBone(world, length = 7, thickness = 1, parent = head, jointAttach = 1, restAngle = 0, maxMotorTorque = 5000, maxMotorSpeed = 3f)
     val leftArm   = new JointBone(world, length = 4, thickness = 1, parent = back, jointAttach = 0.2, restAngle = 0, maxMotorTorque = 5000, maxMotorSpeed = 3f)
     val leftLowerArm   = new JointBone(world, length = 3, thickness = 1, parent = leftArm, jointAttach = 1, restAngle = 0, maxMotorTorque = 5000, maxMotorSpeed = 3f)
     val rightArm   = new JointBone(world, length = 4, thickness = 1, parent = back, jointAttach = 0.2, restAngle = 0, maxMotorTorque = 5000, maxMotorSpeed = 3f)
@@ -415,12 +427,12 @@ class Box2DCreature extends Creature {
 class Population(val creature:Creature) {
   import math._
 
-  var populationSize = 20
+  var populationSize = 30
   val parentCount = 2 //TODO: crossover with more parents
   var crossoverProbability = 0.85
   var mutationProbability = 0.05
   var mutationStrength = 0.2
-  var elitism = 0.01
+  var elitism = 0.001
 
   //TODO: Array[O <: Organism]
   var organisms:Array[Organism] = creature.create(populationSize).toArray
@@ -429,10 +441,11 @@ class Population(val creature:Creature) {
   def nextGeneration() {
     val sortedOrganisms = organisms.sortBy(_.fitness).reverse
     val sortedGenomes = sortedOrganisms map (_.genome)
+    var newGenomes = new mutable.ArrayBuffer[Genome]
 
-    val newGenomes = new mutable.ArrayBuffer[Genome]
-
+    sortedGenomes.foreach(_.isElite = false)
     newGenomes ++= sortedGenomes.take(ceil(elitism*populationSize).toInt)
+    newGenomes.foreach(_.isElite = true)
     while( newGenomes.size < populationSize ) {
       if( sortedGenomes.size - newGenomes.size >= 2 ) {
         val parentA = rankSelection(sortedOrganisms, (e:Organism) => e.fitness).genome
@@ -449,6 +462,11 @@ class Population(val creature:Creature) {
       }
     }
 
+    // if lowering populationSize, take only the best ones
+    if( populationSize < organisms.size )
+      newGenomes = new mutable.ArrayBuffer[Genome] ++ sortedGenomes.take(populationSize)
+    
+    // if raising populationSize, fill the new positions with fresh random organisms
     if( organisms.size != populationSize )
       organisms = creature.create(populationSize).toArray
 
