@@ -12,6 +12,7 @@ object Box2DTools {
     type Vec2 = org.jbox2d.common.Vec2
     object Vec2 {
       @inline def apply(x:Float, y:Float) = new Vec2(x,y)
+      @inline def apply(x:Double, y:Double) = new Vec2(x.toFloat,y.toFloat)
       @inline def apply(x:Float) = new Vec2(x,x)
     }
 
@@ -20,13 +21,22 @@ object Box2DTools {
       def -(that:Vec2) = v.sub(that)
       def *(that:Float) = v.mul(that)
       def :=(that:Vec2) = v.set(that.x, that.y)
+
+      override def equals(other: Any): Boolean =
+        other match {
+          case that: Vec2 =>
+              v.x == that.x &&
+              v.y == that.y
+          case _ => false
+        }
+
     }
   }
 
   def createBox(world: World,
                 pos: Vec2,
-                hx: Float = 1f,
-                hy: Float = 1f,
+                width: Float = 2f,
+                height: Float = 2f,
                 density: Float = 1f,
                 friction: Float = 0.6f,
                 center: Vec2 = new Vec2(0, 0),
@@ -39,7 +49,7 @@ object Box2DTools {
 
     val fixtureDef = new FixtureDef
     val dynamicBox = new PolygonShape
-    dynamicBox.setAsBox(hx, hy, center, angle)
+    dynamicBox.setAsBox(width * 0.5f, height * 0.5f, center, angle)
     fixtureDef.shape = dynamicBox
     fixtureDef.density = density
     fixtureDef.friction = friction

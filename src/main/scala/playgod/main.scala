@@ -16,6 +16,7 @@ import swing._
 import event._
 import Box2DTools._
 import collection.mutable
+import playgod.refactoring.{Box2DSimulationOrganism, SimulationOrganism}
 
 object Main extends SimpleSwingApplication {
   
@@ -34,21 +35,22 @@ object Main extends SimpleSwingApplication {
   def mousePos = new Vec2(Mouse.getX,Mouse.getY)
   def box2dMousePos = mousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
 
-  var subSteps = 1
+  var subSteps = 10
   val obstacleCount = 10
-  var generationLifeTime = 2000
   var generation = 0
 
   var arrowDirection = 0
   var autoArrowDirections = true
-  def arrowChangeInterval = generationLifeTime / 4
+  var generationLifeTime = 500//creature.maxLifetime
+  def arrowChangeInterval = generationLifeTime / 6
 
-  val population = new Population(CreatureFactory.forky)
+  val creature = new refactoring.Box2DCreature
+  val population = new refactoring.Population(creature)
   val bestScoreStats = new mutable.ArrayBuffer[Double]
-  val worstScoreStats = new mutable.ArrayBuffer[Double]
+  val avgScoreStats = new mutable.ArrayBuffer[Double]
 
   val statsHeight = 0.1f
-  val statsRange = 30
+  val statsRange = width
 
 
   val renderArea = new LWJGLComponent(new Dimension(width, height))
@@ -168,9 +170,9 @@ object Main extends SimpleSwingApplication {
   def drawStats() {
     if( bestScoreStats.size <= 1 ) return
     def bestData = bestScoreStats.takeRight(statsRange)
-    def worstData = worstScoreStats.takeRight(statsRange)
+    def avgData = avgScoreStats.takeRight(statsRange)
     
-    val min = worstData.min
+    val min = avgData.min
     val max = bestData.max
     val range = max - min
     
@@ -197,8 +199,8 @@ object Main extends SimpleSwingApplication {
 
     glBegin(GL_LINE_STRIP)
       glColor3f(242f/255f, 200f/255f, 148f/255f)
-      for( (score, i) <- worstData zipWithIndex )
-      glVertex2f(i.toFloat/(worstData.size-1), (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
+      for( (score, i) <- avgData zipWithIndex )
+      glVertex2f(i.toFloat/(avgData.size-1), (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
     glEnd()
 
     glPopMatrix()
@@ -307,26 +309,27 @@ object Main extends SimpleSwingApplication {
       
       for( _ <- 0 until subSteps ) {
         if( autoArrowDirections ) {
-          val t = i % (2 * arrowChangeInterval)
-          if( t < arrowChangeInterval ) arrowDirection = -1
-          else /*if( t < arrowChangeInterval*2 )*/ arrowDirection = 1
-          //else /*if( t < arrowChangeInterval*3 )*/ arrowDirection = 0
+          val t = i % (3 * arrowChangeInterval)
+          if( t < arrowChangeInterval ) arrowDirection = 0
+          else if( t < arrowChangeInterval*2 ) arrowDirection = -1
+          else /*if( t < arrowChangeInterval*3 )*/ arrowDirection = 1
           //println("i: %d arrowDirection: " + arrowDirection)
         }
         
         
-        population.update()
+        //population.update()
+        population.organisms.par.foreach(_.asInstanceOf[Box2DSimulationOrganism].step())
         
         i += 1
         if( i % generationLifeTime == 0 ) {
-          val bestScore = population.brains.maxBy(_.score).score
-          val worstScore = population.brains.minBy(_.score).score
+          val bestScore = population.organisms.maxBy(_.fitness).fitness
+          val avgScore = population.organisms.map(_.fitness).sum / population.populationSize
           if( bestScore != lastBestScore ) {
             println("generation: %d, maxScore: %s" format (generation, bestScore))
             lastBestScore = bestScore
           }
           bestScoreStats += bestScore
-          worstScoreStats += worstScore
+          avgScoreStats += avgScore
           population.nextGeneration()
           generation += 1
         }
@@ -337,7 +340,8 @@ object Main extends SimpleSwingApplication {
       glScalef(1 / r, 1 / t, 1f)
       glTranslatef(translation.x*zoom, translation.y*zoom, 0)
 
-      population.draw(drawBestCheckBox.selected)
+      //population.draw(drawBestCheckBox.selected)
+      population.organisms.foreach(_.asInstanceOf[Box2DSimulationOrganism].debugDraw())
       drawStats()
 
       Display.update()
