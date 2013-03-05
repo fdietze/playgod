@@ -9,3 +9,5 @@ libraryDependencies += "org.encog" % "encog-core" % "3.1.0"
 LWJGLPlugin.lwjglSettings
 
 // -XX:+UseConcMarkSweepGC -Djava.library.path=target/scala-2.10/resource_managed/main/lwjgl-resources/linux
+
+scalacOptions ++= Seq("-optimize", "-unchecked", "-deprecation")

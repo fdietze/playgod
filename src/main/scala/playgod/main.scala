@@ -42,6 +42,7 @@ object Main extends SimpleSwingApplication {
   var arrowDirection = 0
   var autoArrowDirections = true
   def generationLifeTime = creature.maxSimulationSteps
+  def simulationTimeStep = creature.simulationTimeStep
   def arrowChangeInterval = generationLifeTime / 6
 
   val creature = new refactoring.Box2DCreature
@@ -54,7 +55,7 @@ object Main extends SimpleSwingApplication {
 
 
   val renderArea = new LWJGLComponent(new Dimension(width, height))
-  val drawBestCheckBox = new CheckBox("draw elite")
+  val drawBestCheckBox = new CheckBox("elite")
   val top = new swing.MainFrame {
     val panel = new BoxPanel(Orientation.Vertical) {
       contents += new BoxPanel(Orientation.Horizontal) {
@@ -67,7 +68,7 @@ object Main extends SimpleSwingApplication {
           }
         }*/
 
-        contents += new Label("substeps: ")
+        contents += new Label("sub: ")
         contents += new TextField {
           maximumSize = new Dimension(50,50)
           text = subSteps.toString
@@ -75,6 +76,17 @@ object Main extends SimpleSwingApplication {
           reactions += {
             case e:EditDone =>
               subSteps = this.text.toInt
+          }
+        }
+
+        contents += new Label("time: ")
+        contents += new TextField {
+          maximumSize = new Dimension(50,50)
+          text = creature.simulationTimeStep.toString.take(5)
+          listenTo(this)
+          reactions += {
+            case e:EditDone =>
+              creature.simulationTimeStep = this.text.toFloat
           }
         }
 

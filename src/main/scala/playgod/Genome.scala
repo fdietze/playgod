@@ -92,21 +92,29 @@ class Genome(val chromosomes:SortedMap[String,Chromosome]) extends MapProxy[Stri
 
   def mutate(probability:Double, strength:Double) = {
     val newGenes = genes.toArray
-    for( (gene,i) <- newGenes.zipWithIndex ) {
+
+    val mutations = (probability * genes.size).toInt
+    for( _ <- 0 until mutations )
+      newGenes(rInt % genes.size) += rGaussian*strength
+    
+    /*for( (gene,i) <- newGenes.zipWithIndex ) {
       if( inCase(probability) )
         newGenes(i) = gene + rGaussian*strength
-    }
+    }*/
     update(newGenes)
   }
 
   def crossover(that:Genome) = {
-    val offspringGenesA = this.genes.toArray
+    /*val offspringGenesA = this.genes.toArray
     val offspringGenesB = that.genes.toArray
     for( i <- 0 until size )
       if( inCase(0.5) ) {
         offspringGenesA(i) = that.genes(i)
         offspringGenesB(i) = this.genes(i)
-      }
+      }*/
+    val crossoverPoint = rInt % genes.size
+    val offspringGenesA = this.genes.slice(0, crossoverPoint) ++ that.genes.slice(crossoverPoint, genes.size)
+    val offspringGenesB = that.genes.slice(0, crossoverPoint) ++ this.genes.slice(crossoverPoint, genes.size)
     (update(offspringGenesA), update(offspringGenesB))
   }
 
@@ -154,7 +162,7 @@ abstract class SimulationOrganism extends Organism {
 }
 
 abstract class Box2DSimulationOrganism extends SimulationOrganism {
-  val timeStep = 1f / 60f
+  val timeStep = 1f / 30f
   val world = new World(new Vec2(0, -9.81f), true)
   world.setDebugDraw(DebugDrawer)
 
@@ -310,13 +318,14 @@ class Box2DCreature extends Creature {
   //gb[NamedChromosomeBuilder]("skeleton")("legRestAngle") = 0.5 //TODO: implement jointbones with inverse angle
   gb[NamedChromosomeBuilder]("skeleton")("footRestAngle") = 0*/
   
-  val sensorCount = 7
+  val sensorCount = 6
   val boneCount = 12
   val dummyBrain = new Brain(new Array[Sensor](sensorCount*boneCount), new Array[Effector](boneCount -1))
   gb("brain") = dummyBrain.getWeights
 
   var genome = gb.toGenome
   var maxSimulationSteps = 500
+  var simulationTimeStep = 1/60f
   def currentGenome = genome
   
   println("genes: %d (%d synapses)" format(genome.genes.size, genome[PlainChromosome]("brain").size))
@@ -332,6 +341,7 @@ class Box2DCreature extends Creature {
 
   def create = new Box2DSimulationOrganism {
     override val maxSteps = maxSimulationSteps
+    override val timeStep = simulationTimeStep
     val genome = currentGenome
     //val sk = genome[NamedChromosome]("skeleton")
     val brainGenes = genome[PlainChromosome]("brain")
@@ -370,8 +380,9 @@ class Box2DCreature extends Creature {
       inputs = bodies.flatMap( body => Array(
         Sensor(body.getLinearVelocity.x),
         Sensor(body.getLinearVelocity.y),
-        Sensor(sin(body.getAngularVelocity)),
-        Sensor(cos(body.getAngularVelocity)),
+        Sensor(body.getAngularVelocity),
+//        Sensor(sin(body.getAngularVelocity)),
+//        Sensor(cos(body.getAngularVelocity)),
         Sensor(sin(body.getAngle)),
         Sensor(cos(body.getAngle)),
         Sensor(body.getPosition.y/20f)/*,
@@ -427,11 +438,11 @@ class Box2DCreature extends Creature {
 class Population(val creature:Creature) {
   import math._
 
-  var populationSize = 30
+  var populationSize = 50
   val parentCount = 2 //TODO: crossover with more parents
   var crossoverProbability = 0.85
-  var mutationProbability = 0.05
-  var mutationStrength = 0.2
+  var mutationProbability = 0.1
+  var mutationStrength = 0.1
   var elitism = 0.001
 
   //TODO: Array[O <: Organism]
