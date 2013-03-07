@@ -10,6 +10,7 @@ import org.jbox2d.collision.shapes.PolygonShape
 import org.jbox2d.common.MathUtils._
 import collection.{mutable, SortedMap, MapProxy, SeqProxy}
 import org.encog.neural.networks.BasicNetwork
+import org.encog.neural.pattern.ElmanPattern
 import org.encog.neural.networks.layers.BasicLayer
 import org.encog.engine.network.activation.ActivationTANH
 import playgod.RandomTools._
@@ -141,8 +142,8 @@ abstract class SimulationOrganism extends Organism {
   def simulationStep()
 
   val maxSteps = 500
-  private var age = 0
-  private var score = 0.0
+  var age = 0
+  var score = 0.0
 
   def step() {
     if ( age < maxSteps ) {
@@ -246,12 +247,20 @@ class JointBone(world:World, length:Float, thickness:Float, parent:Bone, jointAt
 }
 
 class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWeights:Option[Array[Double]] = None) {
-  val network = new BasicNetwork()
+  
+  val network = new BasicNetwork
   network.addLayer(new BasicLayer(null,false, inputs.size))
-  network.addLayer(new BasicLayer(new ActivationTANH(),true,inputs.size))
-  network.addLayer(new BasicLayer(new ActivationTANH(),true,inputs.size))
-  network.addLayer(new BasicLayer(new ActivationTANH(),true,outputs.size))
+  network.addLayer(new BasicLayer(new ActivationTANH,true,inputs.size))
+  network.addLayer(new BasicLayer(new ActivationTANH,true,inputs.size))
+  network.addLayer(new BasicLayer(new ActivationTANH,true,outputs.size))
   network.getStructure.finalizeStructure()
+  /*val pattern = new ElmanPattern
+  pattern.setActivationFunction(new ActivationTANH)
+  pattern.setInputNeurons(inputs.size)
+  pattern.addHiddenLayer(inputs.size)
+  pattern.setOutputNeurons(outputs.size)
+  val network = pattern.generate().asInstanceOf[BasicNetwork]*/
+  
   val randomizer = new org.encog.mathutil.randomize.GaussianRandomizer(0,1)
 
   if( initialWeights.isDefined )
@@ -318,7 +327,7 @@ class Box2DCreature extends Creature {
   //gb[NamedChromosomeBuilder]("skeleton")("legRestAngle") = 0.5 //TODO: implement jointbones with inverse angle
   gb[NamedChromosomeBuilder]("skeleton")("footRestAngle") = 0*/
   
-  val sensorCount = 6
+  val sensorCount = 7
   val boneCount = 12
   val dummyBrain = new Brain(new Array[Sensor](sensorCount*boneCount), new Array[Effector](boneCount -1))
   gb("brain") = dummyBrain.getWeights
@@ -380,12 +389,12 @@ class Box2DCreature extends Creature {
       inputs = bodies.flatMap( body => Array(
         Sensor(body.getLinearVelocity.x),
         Sensor(body.getLinearVelocity.y),
-        Sensor(body.getAngularVelocity),
-//        Sensor(sin(body.getAngularVelocity)),
-//        Sensor(cos(body.getAngularVelocity)),
+        // Sensor(body.getAngularVelocity),
+        Sensor(sin(body.getAngularVelocity)),
+        Sensor(cos(body.getAngularVelocity)),
         Sensor(sin(body.getAngle)),
         Sensor(cos(body.getAngle)),
-        Sensor(body.getPosition.y/20f)/*,
+        Sensor(body.getPosition.y/10f)/*,
         Sensor(playgod.Main.arrowDirection)*/
       ) ),
       outputs = jointBones.map( bone =>
@@ -396,12 +405,7 @@ class Box2DCreature extends Creature {
     assert( brain.inputs.size == dummyBrain.inputs.size )
     assert( brain.outputs.size == dummyBrain.outputs.size )
 
-    override def reward = {
-      //val vel = hipBone.body.getLinearVelocity.y
-      //if( vel > 0 ) vel*2 else vel
-      //val height = bones.map(_.body.getPosition.y).sum/bones.size
-      //height
-      val straightBody =
+    def straightBody =
         (head.body.getPosition.y - back.body.getPosition.y) +
         (back.body.getPosition.y - leftLeg.body.getPosition.y) +
         (leftLeg.body.getPosition.y - leftLowerLeg.body.getPosition.y) +
@@ -409,6 +413,13 @@ class Box2DCreature extends Creature {
         (back.body.getPosition.y - rightLeg.body.getPosition.y) +
         (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y) +
         (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)
+
+    override def reward = {
+      //val vel = hipBone.body.getLinearVelocity.y
+      //if( vel > 0 ) vel*2 else vel
+      //val height = bones.map(_.body.getPosition.y).sum/bones.size
+      //height
+      
       val vel = back.body.getLinearVelocity.x
       // back.body.getLinearVelocity.x * 
       
@@ -424,7 +435,11 @@ class Box2DCreature extends Creature {
       (playgod.Main.arrowDirection*5 - vel).abs*/
       //back.body.getAngle.abs
       //back.body.getPosition.x.abs / 20
-      0
+      var sum = 0.0
+      if( straightBody < 27 )
+        sum += back.body.getLinearVelocity.x.abs
+      
+      sum  
     }
 
     override def step() {
@@ -438,12 +453,12 @@ class Box2DCreature extends Creature {
 class Population(val creature:Creature) {
   import math._
 
-  var populationSize = 50
+  var populationSize = 30
   val parentCount = 2 //TODO: crossover with more parents
   var crossoverProbability = 0.85
-  var mutationProbability = 0.1
-  var mutationStrength = 0.1
-  var elitism = 0.001
+  var mutationProbability = 0.01
+  var mutationStrength = 0.2
+  var elitism = 0.00
 
   //TODO: Array[O <: Organism]
   var organisms:Array[Organism] = creature.create(populationSize).toArray

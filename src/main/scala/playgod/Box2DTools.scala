@@ -11,9 +11,9 @@ object Box2DTools {
   object MathHelpers {
     type Vec2 = org.jbox2d.common.Vec2
     object Vec2 {
-      @inline def apply(x:Float, y:Float) = new Vec2(x,y)
-      @inline def apply(x:Double, y:Double) = new Vec2(x.toFloat,y.toFloat)
-      @inline def apply(x:Float) = new Vec2(x,x)
+      def apply(x:Float, y:Float) = new Vec2(x,y)
+      def apply(x:Double, y:Double) = new Vec2(x.toFloat,y.toFloat)
+      def apply(x:Float) = new Vec2(x,x)
     }
 
     implicit class RichVec2(v:Vec2) {

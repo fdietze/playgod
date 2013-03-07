@@ -48,7 +48,7 @@ class Population(val creatureDef:CreatureDefinition) {
 
     val newWeights = new mutable.ArrayBuffer[Array[Double]]
     def addWeights(weights:Array[Double]) {
-      for( (weight,i) <- weights zipWithIndex ) {
+      for( (weight,i) <- weights.zipWithIndex ) {
         if( inCase(mutationProbability) )
           weights(i) = weight + rGaussian*mutationStrength
       }

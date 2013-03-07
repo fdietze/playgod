@@ -31,7 +31,7 @@ object Main extends SimpleSwingApplication {
   def t = height * 0.5f * zoom
   val n = -1f
   val f = 1f
-  var translation = new Vec2(0,0)
+  var translation = new Vec2(0,-200)
   def mousePos = new Vec2(Mouse.getX,Mouse.getY)
   def box2dMousePos = mousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
 
@@ -49,8 +49,9 @@ object Main extends SimpleSwingApplication {
   val population = new refactoring.Population(creature)
   val bestScoreStats = new mutable.ArrayBuffer[Double]
   val avgScoreStats = new mutable.ArrayBuffer[Double]
+  val worstScoreStats = new mutable.ArrayBuffer[Double]
 
-  val statsHeight = 0.1f
+  val statsHeight = 0.2f
   val statsRange = width
 
 
@@ -180,40 +181,54 @@ object Main extends SimpleSwingApplication {
   }
   
   def drawStats() {
-    if( bestScoreStats.size <= 1 ) return
-    def bestData = bestScoreStats.takeRight(statsRange)
-    def avgData = avgScoreStats.takeRight(statsRange)
-    
-    val min = avgData.min
-    val max = bestData.max
-    val range = max - min
-    
     val padding = 0.01f
 
     glPushMatrix()
-
 
     glLoadIdentity()
     glTranslatef(-1, -1, 0)
     glScalef(2f, 2f, 1f)
 
+    class Color(r:Float, g:Float, b:Float) {
+      def this(r:Int, g:Int, b:Int) = this(r/255f, g/255f, b/255f)
+      def this(c:Int) = this((c & 0xFF0000) >> 16, (c & 0xFF00) >> 8, c & 0xFF)
+      def glColor() = glColor3f(r,g,b)
+    }
+
+
     glBegin(GL_LINES)
       glColor3f(91f/255f, 177f/255f, 189f/255f)
       glVertex2f(0, (1-2*padding-statsHeight).toFloat)
       glVertex2f(1, (1-2*padding-statsHeight).toFloat)
+      
+      (new Color(0x7AECFC)).glColor // age
+      glVertex2f(0, (1-2*padding-statsHeight).toFloat)
+      glVertex2f(population.organisms.head.asInstanceOf[Box2DSimulationOrganism].age.toFloat/population.organisms.head.asInstanceOf[Box2DSimulationOrganism].maxSteps, (1-2*padding-statsHeight).toFloat)
     glEnd()
 
-    glBegin(GL_LINE_STRIP)
-      glColor3f(148f/255f, 232f/255f, 242f/255f)
-      for( (score, i) <- bestData zipWithIndex )
-      glVertex2f(i.toFloat/(bestData.size-1), (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
-    glEnd()
+    if( bestScoreStats.size == 0 ) {glPopMatrix(); return}
+    def bestData = bestScoreStats.takeRight(statsRange)
+    def avgData = avgScoreStats.takeRight(statsRange)
+    def worstData = worstScoreStats.takeRight(statsRange)
+    
+    val min = worstData.min
+    val max = bestData.max
+    val range = max - min
+    
 
-    glBegin(GL_LINE_STRIP)
-      glColor3f(242f/255f, 200f/255f, 148f/255f)
-      for( (score, i) <- avgData zipWithIndex )
-      glVertex2f(i.toFloat/(avgData.size-1), (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
-    glEnd()
+    for( (data,color) <- List((worstData,new Color(0xFFB4B0)), (avgData,new Color(242,200,148)), (bestData,new Color(0xF5FFA3))) ) {
+      glBegin(GL_LINE_STRIP)
+        color.glColor()
+        if( bestScoreStats.size == 1 ) {
+          val score = data(0)
+          glVertex2f(0f, (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
+          glVertex2f(1f, (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
+        }
+        else
+          for( (score, i) <- data.zipWithIndex )
+            glVertex2f(i.toFloat/(data.size-1), (1-padding-statsHeight+(score - min) / range * statsHeight).toFloat)
+      glEnd()
+    }
 
     glPopMatrix()
     
@@ -343,12 +358,15 @@ object Main extends SimpleSwingApplication {
           population.organisms.par.foreach(_.asInstanceOf[Box2DSimulationOrganism].finish()) 
           val bestScore = population.organisms.maxBy(_.fitness).fitness
           val avgScore = population.organisms.map(_.fitness).sum / population.populationSize
+          val worstScore = population.organisms.minBy(_.fitness).fitness
+          
           if( bestScore != lastBestScore ) {
             println("generation: %d, maxScore: %s" format (generation, bestScore))
             lastBestScore = bestScore
           }
           bestScoreStats += bestScore
           avgScoreStats += avgScore
+          worstScoreStats += worstScore
           population.nextGeneration()
           generation += 1
         }

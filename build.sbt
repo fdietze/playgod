@@ -10,4 +10,4 @@ LWJGLPlugin.lwjglSettings
 
 // -XX:+UseConcMarkSweepGC -Djava.library.path=target/scala-2.10/resource_managed/main/lwjgl-resources/linux
 
-scalacOptions ++= Seq("-optimize", "-unchecked", "-deprecation")
+scalacOptions ++= Seq("-optimize", "-unchecked", "-deprecation", "-feature", "-Yinline-warnings")
