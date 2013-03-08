@@ -1,197 +1,154 @@
 package playgod
 
-import org.jbox2d.dynamics._
-import org.jbox2d.dynamics.joints._
-import Box2DTools._
-import Box2DTools.MathHelpers._
+import playgod.Box2DTools._
+import playgod.Box2DTools.MathHelpers.Vec2
+import org.jbox2d.common.MathUtils._
 
-import collection.mutable
-import math._
-import org.jbox2d.collision.shapes.PolygonShape
+abstract class Creature {
+  var genome:Genome
+  def create:Organism
+  def create(n:Int):Seq[Organism]
+}
 
-object CreatureFactory {
-  def forky:CreatureDefinition = {
-    val hipBone = new RootBoneDefinition(pos = Vec2(0, 7.5f), width = 5f, height = 1f)
-    val backBone = new JointBoneDefinition(pos = Vec2(0, 9.5f), width = 1f, height = 5f,
-      parentBone = hipBone, jointPos = Vec2(0,7.5f))
-    val leftLeg = new JointBoneDefinition(pos = Vec2(-2f, 5.5f), width = 1f, height = 5f,
-      parentBone = hipBone, jointPos = Vec2(-2f,7.5f))
-    val leftLowerLeg = new JointBoneDefinition(pos = Vec2(-2f, 2.5f), width = 1f, height = 3f,
-      parentBone = leftLeg, jointPos = Vec2(-2f,3.5f))
-    val rightLeg = new JointBoneDefinition(pos = Vec2(2f, 5.5f), width = 1f, height = 5f,
-      parentBone = hipBone, jointPos = Vec2(2f,7.5f))
-    val rightLowerLeg = new JointBoneDefinition(pos = Vec2(2f, 2.5f), width = 1f, height = 3f,
-      parentBone = rightLeg, jointPos = Vec2(2f,3.5f))
+class Box2DCreature extends Creature {
+  val gb = new GenomeBuilder
+  /*gb[NamedChromosomeBuilder]("skeleton")("hipLength") = 0.5
+  gb[NamedChromosomeBuilder]("skeleton")("backLength") = 0.5
+  gb[NamedChromosomeBuilder]("skeleton")("legLength") = 0.5
+  gb[NamedChromosomeBuilder]("skeleton")("footLength") = 0.5
+  gb[NamedChromosomeBuilder]("skeleton")("backMotorTorque") = 1
+  gb[NamedChromosomeBuilder]("skeleton")("legMotorTorque") = 1
+  gb[NamedChromosomeBuilder]("skeleton")("footMotorTorque") = 1
+  gb[NamedChromosomeBuilder]("skeleton")("backMotorSpeed") = 1
+  gb[NamedChromosomeBuilder]("skeleton")("legMotorSpeed") = 1
+  gb[NamedChromosomeBuilder]("skeleton")("footMotorSpeed") = 1
+  //gb[NamedChromosomeBuilder]("skeleton")("backRestAngle") = 0.5
+  //gb[NamedChromosomeBuilder]("skeleton")("legRestAngle") = 0.5 //TODO: implement jointbones with inverse angle
+  gb[NamedChromosomeBuilder]("skeleton")("footRestAngle") = 0*/
 
-    def outToAngle(out:Double) = ((out * 2 - 1)*Pi*0.5).toFloat
-    val brain = new BrainDefinition(
-      inputs = Array(hipBone, backBone, leftLeg, leftLowerLeg, rightLeg, rightLowerLeg).flatMap( bone => Array(
-        new BoneSensorDefinition(bone, (b) => b.body.getLinearVelocity.x),
-        new BoneSensorDefinition(bone, (b) => b.body.getLinearVelocity.y),
-        new BoneSensorDefinition(bone, (b) => sin(b.body.getAngularVelocity)),
-        new BoneSensorDefinition(bone, (b) => cos(b.body.getAngularVelocity)),
-        new BoneSensorDefinition(bone, (b) => sin(b.body.getAngle)),
-        new BoneSensorDefinition(bone, (b) => cos(b.body.getAngle)),
-        new BoneSensorDefinition(bone, (b) => b.body.getPosition.y/20f)
-      ) ) /*++ Array(
-        new ClosureSensor( Main.arrowDirection.toDouble )
-      )*/,
-      outputs = Array(backBone, leftLeg, leftLowerLeg, rightLeg, rightLowerLeg).flatMap( bone => Array(
-        new BoneEffectorDefinition(bone, (b, a) => {b.asInstanceOf[JointBone].angleTarget = outToAngle(a)}))
+  val sensorCount = 7
+  val boneCount = 12
+  val dummyBrain = new Brain(new Array[Sensor](sensorCount*boneCount), new Array[Effector](boneCount -1))
+  gb("brain") = dummyBrain.getWeights
+
+  var genome = gb.toGenome
+  var maxSimulationSteps = 500
+  var simulationTimeStep = 1/60f
+  def currentGenome = genome
+
+  println("genes: %d (%d synapses)" format(genome.genes.size, genome[PlainChromosome]("brain").size))
+
+  def create(n:Int) = {
+    for( _ <- 0 until n) yield {
+      dummyBrain.randomizeWeights()
+      gb("brain") = dummyBrain.getWeights
+      genome = gb.toGenome
+      create
+    }
+  }
+
+  def create = new Box2DSimulationOrganism {
+    override val maxSteps = maxSimulationSteps
+    override val timeStep = simulationTimeStep
+    val genome = currentGenome
+    //val sk = genome[NamedChromosome]("skeleton")
+    val brainGenes = genome[PlainChromosome]("brain")
+
+    val ground = createBox(world, pos = new Vec2(0, -5), width = 2000, height = 10, density = 0f, friction = 1f)
+    //val obstacle = createBox(world, pos = new Vec2(50, -3), width = 2, height = 8, density = 0f, friction = 1f)
+
+    /*    val hipBone   = new RootBone(world, length = sk("hipLength").abs*10, thickness = 1, pos = Vec2(0,(sk("hipLength")+sk("backLength")+sk("legLength")+sk("footLength"))*10), angle = 0.0)
+        val backBone  = new JointBone(world, length = sk("backLength").abs*10, thickness = 1, parent = hipBone, jointAttach = 0.5f, restAngle = PI*0.5, maxMotorTorque = sk("backMotorTorque").abs*5000, maxMotorSpeed = sk("backMotorSpeed").abs*3)
+        val leftLeg   = new JointBone(world, length = sk("legLength").abs*10, thickness = 1, parent = hipBone, jointAttach = 0f, restAngle = -PI*0.5, maxMotorTorque = sk("legMotorTorque").abs*5000, maxMotorSpeed = sk("legMotorSpeed").abs*3)
+        val leftFoot  = new JointBone(world, length = sk("footLength").abs*10, thickness = 1, parent = leftLeg, jointAttach = 1f, restAngle = -PI*sk("footRestAngle"), maxMotorTorque = sk("footMotorTorque").abs*5000, maxMotorSpeed = sk("footMotorSpeed").abs*3)
+        val rightLeg  = new JointBone(world, length = sk("legLength").abs*10, thickness = 1, parent = hipBone, jointAttach = 1f, restAngle = -PI*0.5, maxMotorTorque = sk("legMotorTorque").abs*5000, maxMotorSpeed = sk("legMotorSpeed").abs*3)
+        val rightFoot = new JointBone(world, length = sk("footLength").abs*10, thickness = 1, parent = rightLeg, jointAttach = 1f, restAngle = PI*sk("footRestAngle"), maxMotorTorque = sk("footMotorTorque").abs*5000, maxMotorSpeed = sk("footMotorSpeed").abs*3)
+        val bones = Array(hipBone, backBone, leftLeg, leftFoot, rightLeg, rightFoot)
+        val jointBones = Array(backBone, leftLeg, leftFoot, rightLeg, rightFoot)*/
+    val maxMotorSpeed = 5f
+    val maxMotorTorque = 5000f
+    val head      = new RootBone(world, length = 0.2, thickness = 0.2, pos = Vec2(0,2), angle = -0.5*PI)
+    val back      = new JointBone(world, length = 0.6, thickness = 0.15, parent = head, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+
+    val leftArm   = new JointBone(world, length = 0.3, thickness = 0.1, parent = back, jointAttach = 0.2, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val leftLowerArm   = new JointBone(world, length = 0.4, thickness = 0.1, parent = leftArm, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val rightArm   = new JointBone(world, length = 0.3, thickness = 0.1, parent = back, jointAttach = 0.2, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val rightLowerArm   = new JointBone(world, length = 0.4, thickness = 0.1, parent = rightArm, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+
+    val leftLeg   = new JointBone(world, length = 0.5, thickness = 0.15, parent = back, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val leftLowerLeg   = new JointBone(world, length = 0.5, thickness = 0.1, parent = leftLeg, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val leftFoot   = new JointBone(world, length = 0.3, thickness = 0.05, parent = leftLowerLeg, jointAttach = 1, restAngle = 0.5*PI, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val rightLeg   = new JointBone(world, length = 0.5, thickness = 0.15, parent = back, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val rightLowerLeg   = new JointBone(world, length = 0.5, thickness = 0.1, parent = rightLeg, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val rightFoot   = new JointBone(world, length = 0.3, thickness = 0.05, parent = rightLowerLeg, jointAttach = 1, restAngle = 0.5*PI, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+
+    val bones = Array(head, back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
+    val jointBones = Array( back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
+
+    val bodies = bones map (_.body)
+    def outToAngle(out:Double) = (out*0.5*PI).toFloat
+    val brain = new Brain(
+      inputs = bodies.flatMap( body => Array(
+        Sensor(body.getLinearVelocity.x),
+        Sensor(body.getLinearVelocity.y),
+        // Sensor(body.getAngularVelocity),
+        Sensor(sin(body.getAngularVelocity)),
+        Sensor(cos(body.getAngularVelocity)),
+        Sensor(sin(body.getAngle)),
+        Sensor(cos(body.getAngle)),
+        Sensor(body.getPosition.y/10f)/*,
+        Sensor(playgod.Main.arrowDirection)*/
+      ) ),
+      outputs = jointBones.map( bone =>
+        Effector{param => bone.angleTarget = outToAngle(param)}
       ),
-      bonus = { c =>
-        c.boneMap(hipBone).body.getPosition.x
-
-
-        //val error = (c.boneMap(hipBone).body.getAngle - Pi).abs
-        //-error
-
-
-        /*var error = 0.0
-        var bonus = 0.0
-        error += (Main.arrowDirection*3 - c.boneMap(hipBone).body.getLinearVelocity.x).abs
-        error += c.boneMap(hipBone).body.getAngle.abs
-        bonus += c.boneMap(hipBone).body.getPosition.y/30f
-        
-        bonus-error*/
-      }
+      initialWeights = Some(brainGenes.genes.toArray)
     )
+    assert( brain.inputs.size == dummyBrain.inputs.size )
+    assert( brain.outputs.size == dummyBrain.outputs.size )
 
-    val creatureDef = new CreatureDefinition(brain, hipBone,
-      backBone, leftLeg, rightLeg, leftLowerLeg, rightLowerLeg)
-    
-    return creatureDef
-  }
-}
+    def straightBody =
+      (head.body.getPosition.y - back.body.getPosition.y) +
+        (back.body.getPosition.y - leftLeg.body.getPosition.y) +
+        (leftLeg.body.getPosition.y - leftLowerLeg.body.getPosition.y) +
+        (leftLowerLeg.body.getPosition.y - leftFoot.body.getPosition.y) +
+        (back.body.getPosition.y - rightLeg.body.getPosition.y) +
+        (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y) +
+        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)
 
-class Creature(
-    val brain:Brain,
-    val boneMap:mutable.Map[BoneDefinition, Bone],
-    val rootBone:RootBone,
-    val jointBones:JointBone*
-    ) {
+    override def reward = {
+      //val vel = hipBone.body.getLinearVelocity.y
+      //if( vel > 0 ) vel*2 else vel
+      //val height = bones.map(_.body.getPosition.y).sum/bones.size
+      //height
 
-  def bodies = (rootBone +: jointBones).map(_.body)
-  
-  def update() {
-    brain.update(this)
-    jointBones.foreach(_.update())
-  }
+      val vel = back.body.getLinearVelocity.x
+      // back.body.getLinearVelocity.x *
 
-  def reset() {
-    rootBone.reset()
-    jointBones.foreach(_.reset())
-    brain.update(this)
-    brain.score = 0
-  }
-}
+      var sum = 0.0
+      sum += straightBody
+      if( straightBody > 2 && vel > 0 )
+        sum += vel*5
 
-class CreatureDefinition(
-    val brainDefinition:BrainDefinition,
-    val rootBoneDefinition:RootBoneDefinition,
-    val jointBoneDefinitions:JointBoneDefinition*
-    ) {
+      sum
+    }
+    override def penalty = {
+      /*val vel = bones.map(_.body.getLinearVelocity.x).sum/bones.size//hipBone.body.getLinearVelocity.x
+      (playgod.Main.arrowDirection*5 - vel).abs*/
+      //back.body.getAngle.abs
+      //back.body.getPosition.x.abs / 20
+      var sum = 0.0
+      if( straightBody < 2 )
+        sum += back.body.getLinearVelocity.x.abs
 
-  def create(world:World, initialBrainWeights:Option[Array[Double]] = None) = {
-    val boneMap = new mutable.HashMap[BoneDefinition,Bone]
-    val rootBone = rootBoneDefinition.createBone(world, boneMap)
-    val jointBones = jointBoneDefinitions.map(_.createBone(world, boneMap))
-    val creature = new Creature(
-      brainDefinition.create(boneMap, initialBrainWeights),
-      boneMap,
-      rootBone,
-      jointBones:_*
-    )
-    creature
-  }
-}
+      sum
+    }
 
-class BoneDefinition(pos: Vec2,
-                     width: Float = 1f,
-                     height: Float = 1f,
-                     angle: Float = 0f) extends ObjectDefinition {
-  val density = 1f
-  val friction = 1f
-  val center = Vec2(0,0)
-  val collisionGroupIndex = 0
-
-  val bodyDef = new BodyDef
-  if (density != 0f) bodyDef.`type` = BodyType.DYNAMIC
-  bodyDef.active = true
-  bodyDef.position.set(pos)
-
-  val fixtureDef = new FixtureDef
-  private val dynamicBox = new PolygonShape
-  dynamicBox.setAsBox(width*0.5f, height*0.5f, center, angle)
-  fixtureDef.shape = dynamicBox
-  fixtureDef.density = density
-  fixtureDef.friction = friction
-  fixtureDef.filter.groupIndex = collisionGroupIndex
-}
-
-class RootBoneDefinition( pos: Vec2,
-                          width: Float = 1f,
-                          height: Float = 1f,
-                          angle: Float = 0f) extends BoneDefinition(pos, width, height, angle) {
-  def createBone(world:World, boneMap:mutable.Map[BoneDefinition,Bone]) = {
-    val newBone = new RootBone(super.create(world))
-    boneMap += (this -> newBone)
-    newBone
-  }
-}
-
-class JointBoneDefinition(pos: Vec2,
-                     width: Float = 1f,
-                     height: Float = 1f,
-                     angle: Float = 0f,
-                     parentBone:BoneDefinition,
-                     jointPos: Vec2) extends BoneDefinition(pos, width, height, angle) {
-  val jointDef = new RevoluteJointDef
-  jointDef.motorSpeed = 0f
-  jointDef.maxMotorTorque = 5000.0f
-  jointDef.enableMotor = true
-  //jointDef.collideConnected = false
-
-  def createBone(world:World, boneMap:mutable.Map[BoneDefinition,Bone]) = {
-    val body = super.create(world)
-    jointDef.initialize(body, boneMap(parentBone).body, jointPos)
-    val joint = world.createJoint(jointDef).asInstanceOf[RevoluteJoint]
-
-    val newBone = new JointBone(body, joint)
-    boneMap += (this -> newBone)
-    newBone
-  }
-}
-
-abstract class Bone {
-  val body:Body
-  val initialPosition = body.getPosition.clone
-  val initialAngle = body.getAngle
-  def reset() {
-    body.setLinearVelocity(new Vec2(0,0))
-    body.setAngularVelocity(0)
-    body.setTransform(initialPosition.clone, initialAngle)
-    body.setAwake(true)
-  }
-}
-
-class RootBone(val body:Body) extends Bone
-
-class JointBone(val body:Body, val joint:RevoluteJoint ) extends Bone {
-  val maxMotorSpeed = 3f
-  var angleTarget = joint.getJointAngle
-  def counterSpeed(error:Float) = math.tanh(error).toFloat*maxMotorSpeed
-  def update() {
-    val angleError = angleTarget - joint.getJointAngle
-    // only set motorSpeed when necessary
-    // => allows deactivation
-    if( angleError.abs > 0.001f )
-      joint.setMotorSpeed(counterSpeed(angleError))
-  }
-  
-  override def reset() {
-    angleTarget = 0
-    joint.setMotorSpeed(0f)
-    super.reset()
+    override def step() {
+      //println(straightBody)
+      brain.update()
+      jointBones.foreach(_.update())
+      super.step()
+    }
   }
 }

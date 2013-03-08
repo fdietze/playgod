@@ -1,104 +1,61 @@
 package playgod
 
-import org.jbox2d.common._
-import org.jbox2d.dynamics._
-import org.jbox2d.dynamics.joints._
-import Box2DTools._
-
 import collection.mutable
-import math._
+import playgod.RandomTools._
 
-class Population(val creatureDef:CreatureDefinition) {
+class Population(val creature:Creature) {
+  import math._
+
   var populationSize = 30
   val parentCount = 2 //TODO: crossover with more parents
-  var crossoverProbability = 0.8
-  var mutationProbability = 0.1
-  var mutationStrength = 0.1
-  var elitism = 0.1
+  var crossoverProbability = 0.85
+  var mutationProbability = 0.01
+  var mutationStrength = 0.2
+  var elitism = 0.00
 
-  var creatures = Array.fill(populationSize){new CreatureSimulation(creatureDef)}
-  def brains = creatures map (_.creature.brain)
-  def bestCreature = creatures.maxBy(_.creature.brain.score)
-
-  def rInt = util.Random.nextInt.abs
-  def rGaussian = util.Random.nextGaussian
-  def rDouble = util.Random.nextDouble
-  def inCase(probability:Double) = rDouble < probability
-  def rouletteWheelSelection[T](seq:IndexedSeq[T], score:(T) => Double) = {
-    val min = score(seq.minBy(score))
-    val offset = if( min < 0.0 ) min.abs else 0.0
-    def offsetScore(a:T) = offset + score(a)
-    val sum = seq.map(offsetScore).sum
-    val r = rDouble * sum
-
-    var i = 0
-    var currentSum = offsetScore(seq(i))
-    while( currentSum < r ) {
-      i += 1
-      currentSum += offsetScore(seq(i))
-    }
-    seq(i)
-  }
+  //TODO: Array[O <: Organism]
+  var organisms:Array[Organism] = creature.create(populationSize).toArray
+  val genome = creature.genome
 
   def nextGeneration() {
-    val brainData = brains map (_.getData)
+    val sortedOrganisms = organisms.sortBy(_.fitness).reverse
+    val sortedGenomes = sortedOrganisms map (_.genome)
+    var newGenomes = new mutable.ArrayBuffer[Genome]
 
-    val sortedData = brainData.sortBy(_.score).reverse
-    val sortedWeights = sortedData map (_.weights)
-
-    val newWeights = new mutable.ArrayBuffer[Array[Double]]
-    def addWeights(weights:Array[Double]) {
-      for( (weight,i) <- weights.zipWithIndex ) {
-        if( inCase(mutationProbability) )
-          weights(i) = weight + rGaussian*mutationStrength
-      }
-      newWeights += weights
-    }
-
-    newWeights ++= sortedWeights.take(ceil(elitism*populationSize).toInt)
-    while( newWeights.size < populationSize ) {
-      if( sortedWeights.size - newWeights.size >= 2 ) {
-        val parentA = rouletteWheelSelection(sortedData, (e:BrainData) => e.score)
-        val parentB = rouletteWheelSelection(sortedData, (e:BrainData) => e.score)
-        val childWeights = if( inCase(crossoverProbability) ) {
-          val crossOverPoint = rInt % parentA.weights.size
-          val childA = parentA.weights.clone
-          val childB = parentB.weights.clone
-          for( i <- 0 until childA.size )
-            if( inCase(0.5) ) {
-              childA(i) = parentB.weights(i)
-              childB(i) = parentA.weights(i)
-            }
-          /*Array(
-           parentA.weights.take(crossOverPoint) ++ parentB.weights.drop(crossOverPoint),
-           parentB.weights.take(crossOverPoint) ++ parentA.weights.drop(crossOverPoint)
-          )*/
-          Array(childA, childB)
+    sortedGenomes.foreach(_.isElite = false)
+    newGenomes ++= sortedGenomes.take(ceil(elitism*populationSize).toInt)
+    newGenomes.foreach(_.isElite = true)
+    while( newGenomes.size < populationSize ) {
+      if( sortedGenomes.size - newGenomes.size >= 2 ) {
+        val parentA = rankSelection(sortedOrganisms, (e:Organism) => e.fitness).genome
+        val parentB = rankSelection(sortedOrganisms, (e:Organism) => e.fitness).genome
+        val (childA,childB) = if( inCase(crossoverProbability) ) {
+          parentA crossover parentB
         } else {
-          Array(parentA.weights.clone, parentB.weights.clone)
+          (parentA, parentB)
         }
-        childWeights.foreach(addWeights)
+        newGenomes += childA.mutate(mutationProbability, mutationStrength)
+        newGenomes += childB.mutate(mutationProbability, mutationStrength)
       } else {
-        addWeights(sortedWeights(rInt % sortedWeights.size).clone)
+        newGenomes += sortedGenomes(rInt % sortedGenomes.size).mutate(mutationProbability, mutationStrength)
       }
     }
-    
-    if( creatures.size != populationSize )
-      creatures = Array.fill(populationSize){new CreatureSimulation(creatureDef)}
-    
-    for( (weights,i) <- newWeights zip (0 until populationSize) )
-      creatures(i) = new CreatureSimulation(creatureDef, Some(weights))
+
+    // if lowering populationSize, take only the best ones
+    if( populationSize < organisms.size )
+      newGenomes = new mutable.ArrayBuffer[Genome] ++ sortedGenomes.take(populationSize)
+
+    // if raising populationSize, fill the new positions with fresh random organisms
+    if( organisms.size != populationSize )
+      reset()
+
+    for( (genome,i) <- newGenomes zip (0 until populationSize) ) {
+      creature.genome = genome
+      organisms(i) = creature.create
+    }
   }
 
-  def update() {
-    Physics.update(creatures)
-    Physics.step(creatures)
-  }
-
-  def draw(drawBest:Boolean = false) {
-    if( drawBest )
-      Physics.debugDraw(Array(bestCreature))
-    else
-      Physics.debugDraw(creatures)
+  def reset() {
+    organisms = creature.create(populationSize).toArray
   }
 }

@@ -16,7 +16,6 @@ import swing._
 import event._
 import Box2DTools._
 import collection.mutable
-import playgod.refactoring.{Box2DSimulationOrganism, SimulationOrganism}
 
 object Main extends SimpleSwingApplication {
   
@@ -45,30 +44,21 @@ object Main extends SimpleSwingApplication {
   def simulationTimeStep = creature.simulationTimeStep
   def arrowChangeInterval = generationLifeTime / 6
 
-  val creature = new refactoring.Box2DCreature
-  val population = new refactoring.Population(creature)
+  val creature = new Box2DCreature
+  val population = new Population(creature)
   val bestScoreStats = new mutable.ArrayBuffer[Double]
   val avgScoreStats = new mutable.ArrayBuffer[Double]
   val worstScoreStats = new mutable.ArrayBuffer[Double]
 
   val statsHeight = 0.2f
   val statsRange = width
-
-
+  
   val renderArea = new LWJGLComponent(new Dimension(width, height))
   val drawBestCheckBox = new CheckBox("elite")
   val top = new swing.MainFrame {
     val panel = new BoxPanel(Orientation.Vertical) {
       contents += new BoxPanel(Orientation.Horizontal) {
         contents += drawBestCheckBox
-        /*contents += new Button("Random Box") {
-          action = new Action("Random Box") {
-            override def apply() {
-              createBox(Physics.world, new Vec2(util.Random.nextGaussian().toFloat, 10), hx = 1f, hy = 1f)
-           }
-          }
-        }*/
-
         contents += new Label("sub: ")
         contents += new TextField {
           maximumSize = new Dimension(50,50)
@@ -273,30 +263,39 @@ object Main extends SimpleSwingApplication {
       while( Mouse.next ) {
         ( getEventButton, getEventButtonState ) match {
           case (0 , true) => // left down
-            val tolerance = new Vec2(0.01f, 0.01f)
-            val toleranceArea = new AABB(box2dMousePos.sub(tolerance), box2dMousePos.add(tolerance))
-            /*Physics.world.queryAABB(new QueryCallback {
-              def reportFixture(fixture:Fixture):Boolean = {
-                val body = fixture.getBody
-                val mouseJointDef = new MouseJointDef
-                //mouseJointDef.bodyA = Physics.ground
-                mouseJointDef.bodyB = body
-                mouseJointDef.target.set(box2dMousePos)
-                mouseJointDef.maxForce = 1000f * body.getMass
-                //mouseJoint = Some(Physics.world.createJoint(mouseJointDef).asInstanceOf[MouseJoint])
-                body.setAwake(true)
-                
-                return false // cancel iteration
-              }
-            }, toleranceArea)*/
+            /*for( organism <- population.organisms.map(_.asInstanceOf[Box2DSimulationOrganism]) ) {
+              val world = organism.world
+              
+              val tolerance = new Vec2(0.01f, 0.01f)
+              val toleranceArea = new AABB(box2dMousePos.sub(tolerance), box2dMousePos.add(tolerance))
+                world.queryAABB(new QueryCallback {
+                  def reportFixture(fixture:Fixture):Boolean = {
+                    if( fixture.getDensity == 0f ) return true
+                    
+                    val body = fixture.getBody
+                    val mouseJointDef = new MouseJointDef
+                    mouseJointDef.bodyA = body
+                    mouseJointDef.bodyB = body
+                    mouseJointDef.target.set(box2dMousePos)
+                    mouseJointDef.maxForce = 1000f * body.getMass
+                    mouseJoint = Some(world.createJoint(mouseJointDef).asInstanceOf[MouseJoint])
+                    body.setAwake(true)
+                    
+                    return false // cancel iteration
+                  }
+                }, toleranceArea)
+            }*/
             if( !mouseJoint.isDefined ) {
               dragging = true
             }
           case (0 , false) => // left up
-            if( mouseJoint.isDefined ) {
-              //Physics.world.destroyJoint(mouseJoint.get)
+            /*if( mouseJoint.isDefined ) {
+              for( organism <- population.organisms.map(_.asInstanceOf[Box2DSimulationOrganism]) ) {
+                val world = organism.world
+                world.destroyJoint(mouseJoint.get)
+              }
               mouseJoint = None
-            }
+            }*/
             dragging = false
           case (1 , true) => // right down
           case (1 , false) => // right up
@@ -321,8 +320,7 @@ object Main extends SimpleSwingApplication {
       while(Keyboard.next) {
         val key = Keyboard.getEventKey
         if( Keyboard.getEventKeyState ) { // Key down
-          //if( key == Keyboard.KEY_E) Physics.population.evolution()
-          //if( key == Keyboard.KEY_R) Physics.population.creatures.foreach(_.reset())
+          if( key == Keyboard.KEY_R) population.reset()
           if( key == Keyboard.KEY_LEFT) arrowDirection = -1
           if( key == Keyboard.KEY_RIGHT) arrowDirection = 1
           if( key == Keyboard.KEY_A) autoArrowDirections = !autoArrowDirections
