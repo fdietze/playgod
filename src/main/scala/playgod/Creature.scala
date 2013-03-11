@@ -127,8 +127,10 @@ class Box2DCreature extends Creature {
 
       var sum = 0.0
       sum += straightBody
-      if( straightBody > 2 && vel > 0 )
-        sum += vel*5
+      if( straightBody > 2 && vel > 0 ) {
+        sum += vel*3
+        sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
+      }
 
       sum
     }
@@ -145,7 +147,8 @@ class Box2DCreature extends Creature {
     }
 
     override def step() {
-      //println(straightBody)
+//      if( genome.isElite )
+//          println(straightBody)
       brain.update()
       jointBones.foreach(_.update())
       super.step()

@@ -249,7 +249,7 @@ object Main extends SimpleSwingApplication {
         val fps = frameCount / timeDiff
         val stepsps = stepCount / timeDiff
         val generationTime = (generationLifeTime * population.populationSize) / stepsps
-        top.title = "%8.0fsteps/s  %3.1fs/generation  %8.3ffps" format (stepsps, generationTime, fps)
+        top.title = "%8.0fsteps/s  %5.2fs/generation  %8.3ffps" format (stepsps, generationTime, fps)
         frameCount = 0
         stepCount = 0
         lastFpsUpdate = now
