@@ -16,9 +16,124 @@ import swing._
 import event._
 import Box2DTools._
 import collection.mutable
+import org.encog.util.concurrency.{EngineConcurrency, TaskGroup}
+
 
 object Main extends SimpleSwingApplication {
-  
+
+  def genetic() {
+    import org.encog.ml.genetic.genome.Genome
+    import org.encog.ml.genetic.population.BasicPopulation
+    import org.encog.ml.genetic.BasicGeneticAlgorithm
+    import org.encog.ml.genetic.mutate.MutateShuffle
+    import org.encog.ml.genetic.crossover.SpliceNoRepeat
+    import org.encog.ml.genetic.genome.{CalculateGenomeScore, Chromosome, BasicGenome}
+    import org.encog.ml.genetic.genes.IntegerGene
+
+    class TestGenome extends BasicGenome {
+
+      val pathChromosome = new Chromosome
+      val initialOrganism = new Array[Int](10)
+
+
+      getChromosomes.add(this.pathChromosome)
+
+      for( i <- 0 until initialOrganism.length ) {
+        val gene = new IntegerGene()
+        gene.setValue(initialOrganism(i))
+        pathChromosome.getGenes.add(gene)
+      }
+      setOrganism(initialOrganism)
+
+      encode()
+
+      override def decode() {
+        val chromosome = this.getChromosomes().get(0)
+        val organism = new Array[Int](10)
+
+        for( i <- 0 until chromosome.size )
+        {
+          val gene = chromosome.get(i).asInstanceOf[IntegerGene]
+          organism(i) = gene.getValue()
+        }
+
+        setOrganism(organism)
+      }
+
+      override def encode() {
+        val chromosome = this.getChromosomes().get(0)
+
+        val organism = getOrganism.asInstanceOf[Array[Int]]
+
+        for( i <- 0 until chromosome.size )
+        {
+          val gene = chromosome.get(i).asInstanceOf[IntegerGene]
+          gene.setValue(organism(i))
+        }
+      }
+
+    }
+
+    class TestScore extends CalculateGenomeScore {
+      def calculateScore(genome:Genome):Double = {
+        var result = 0.0
+
+        val organism = genome.getOrganism.asInstanceOf[Array[Int]]
+
+        for ( i <- 0 until organism.size) {
+          result += (math.pow(i,2) - organism(i)).abs
+        }
+
+        return result
+      }
+
+      def shouldMinimize = false
+    }
+
+
+    val genetic = new BasicGeneticAlgorithm()
+
+    val score =  new TestScore
+    genetic.setCalculateScore(score)
+
+    val populationSize = 20
+    val population = new BasicPopulation(populationSize)
+    genetic.setPopulation(population)
+
+    for( i <- 0 until populationSize ) {
+      val genome = new TestGenome
+      genetic.getPopulation.add(genome)
+      genetic.calculateScore(genome)
+    }
+
+    population.claim(genetic)
+    population.sort()
+
+
+
+    genetic.setMutationPercent(0.1)
+    genetic.setPercentToMate(0.24)
+    genetic.setMatingPopulation(0.5)
+    genetic.setCrossover(new SpliceNoRepeat(3))
+    genetic.setMutate(new MutateShuffle())
+
+    for ( i <- 0 until 100 ) {
+      genetic.iteration()
+      val thisSolution = genetic.getPopulation().getBest().getScore()
+      println(s"$i: $thisSolution")
+    }
+  }
+
+  genetic()
+  System.exit(0)
+
+
+
+
+
+
+
+
   val width = 800
   val height = 600
   
