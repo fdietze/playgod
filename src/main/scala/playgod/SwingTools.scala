@@ -13,3 +13,13 @@ class LWJGLComponent(dimension:java.awt.Dimension) extends Component {
   canvas.setPreferredSize(dimension)
   peer.add(canvas)
 }
+
+class SettingTextField[T](init:T, update:String => Unit) extends TextField {
+  maximumSize = new Dimension(50,50)
+  text = init.toString
+  listenTo(this)
+  reactions += {
+    case e:EditDone =>
+      update(text)
+  }
+}
