@@ -4,7 +4,7 @@ import collection.mutable
 import org.lwjgl.opengl.GL11._
 
 object Stats {
-  val statsHeight = 0.2f
+/*  val statsHeight = 0.2f
   val statsRange = Main.width
   def population = Main.population
 
@@ -65,6 +65,6 @@ object Stats {
 
     glPopMatrix()
 
-  }
+  }*/
 
 }

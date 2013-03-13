@@ -21,16 +21,17 @@ abstract class SimulationOrganism extends Organism {
 
   val maxSteps = 500
   var age = 0
-  var score = 0.0
+  private var mScore = 0.0
+  def score = mScore / age
 
   def step() {
     if ( age < maxSteps ) {
       simulationStep()
       age += 1
-      score += reward - penalty
+      mScore += reward - penalty
 
       if( age >= maxSteps )
-        fitness = score / age
+        fitness = score
     }
   }
 

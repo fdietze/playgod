@@ -3,7 +3,7 @@ package playgod
 import collection.mutable
 import playgod.RandomTools._
 
-class Population(val creature:Creature) {
+/*class Population(val creature:Creature) {
   import math._
 
   var populationSize = 30
@@ -58,4 +58,4 @@ class Population(val creature:Creature) {
   def reset() {
     organisms = creature.create(populationSize).toArray
   }
-}
+}*/

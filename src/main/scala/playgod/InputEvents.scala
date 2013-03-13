@@ -6,7 +6,7 @@ import org.lwjgl.input.Mouse._
 
 object InputEvents {
   import Main.renderArea.{translation,zoom,mousePos}
-  import Simulation.{population,arrowDirection,autoArrowDirections}
+  import Simulation.{arrowDirection,autoArrowDirections}
 
   var mouseJoint:Option[MouseJoint] = None
   var dragging = false
@@ -73,7 +73,7 @@ object InputEvents {
     while(Keyboard.next) {
       val key = Keyboard.getEventKey
       if( Keyboard.getEventKeyState ) { // Key down
-        if( key == Keyboard.KEY_R) population.reset()
+        //if( key == Keyboard.KEY_R) population.reset()
         if( key == Keyboard.KEY_LEFT) arrowDirection = -1
         if( key == Keyboard.KEY_RIGHT) arrowDirection = 1
         if( key == Keyboard.KEY_A) autoArrowDirections = !autoArrowDirections

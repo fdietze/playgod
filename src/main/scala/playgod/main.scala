@@ -18,7 +18,7 @@ object Main extends SimpleSwingApplication {
     val fps = 60
     var zoom = 1f/10f
     var translation = new Vec2(0,-200)
-    def componentMousePos = new Vec2(Mouse.getX,Mouse.getY)
+    def componentMousePos = new Vec2(Mouse.getX, Mouse.getY)
     def mousePos = componentMousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
 
     def r = Main.width * 0.5f * zoom
@@ -39,7 +39,7 @@ object Main extends SimpleSwingApplication {
   }
 
   def creature = Simulation.creature
-  def population = Simulation.population
+  //def population = Simulation.population
 
   val top = new swing.MainFrame {
     val drawBestCheckBox = new CheckBox("elite")
@@ -51,7 +51,7 @@ object Main extends SimpleSwingApplication {
         contents += new SettingTextField(Simulation.subSteps, x => Simulation.subSteps = x.toInt)
         contents += new Label("age: ")
         contents += new SettingTextField(creature.maxSimulationSteps, x => creature.maxSimulationSteps = x.toInt)
-        contents += new Label("popsize: ")
+        /*contents += new Label("popsize: ")
         contents += new SettingTextField(population.populationSize, x => population.populationSize = x.toInt)
         contents += new Label("cross %: ")
         contents += new SettingTextField(population.crossoverProbability, x => population.crossoverProbability = x.toDouble)
@@ -60,7 +60,7 @@ object Main extends SimpleSwingApplication {
         contents += new Label("mut: ")
         contents += new SettingTextField(population.mutationStrength, x => population.mutationStrength = x.toDouble)
         contents += new Label("elitism: ")
-        contents += new SettingTextField(population.elitism, x => population.elitism = x.toDouble)
+        contents += new SettingTextField(population.elitism, x => population.elitism = x.toDouble)*/
       }
 
       contents += renderArea

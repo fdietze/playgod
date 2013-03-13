@@ -38,11 +38,15 @@ class Box2DCreature extends Creature {
 
   println("genes: %d (%d synapses)" format(genome.genes.size, genome[PlainChromosome]("brain").size))
 
+  def randomGenome = {
+    dummyBrain.randomizeWeights()
+    gb("brain") = dummyBrain.getWeights
+    gb.toGenome
+  }
+
   def create(n:Int) = {
     for( _ <- 0 until n) yield {
-      dummyBrain.randomizeWeights()
-      gb("brain") = dummyBrain.getWeights
-      genome = gb.toGenome
+      genome = randomGenome
       create
     }
   }
