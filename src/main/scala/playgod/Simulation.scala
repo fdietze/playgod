@@ -45,7 +45,7 @@ object Simulation {
       }
     }
 
-    val population:Population = new BasicPopulation(populationSize, null)
+    val population:Population = new BasicPopulation(populationSize, genomeFactory)
     val defaultSpecies = new BasicSpecies()
     defaultSpecies.setPopulation(population)
 
@@ -54,23 +54,22 @@ object Simulation {
       newGenome.setPopulation(population)
       defaultSpecies.getMembers.add(newGenome)
     }
-    population.setGenomeFactory(genomeFactory)
     population.getSpecies.add(defaultSpecies)
 
-    object TestScore extends CalculateScore {
+    val GenomeScore = new CalculateScore {
       val scores = new mutable.HashMap[Array[Double], Double]
       override def calculateScore(phenotype:MLMethod) = phenotype.asInstanceOf[DoubleArrayGenome].getScore
       def shouldMinimize = false
-      def requireSingleThreaded = true
+      def requireSingleThreaded = false
     }
 
-    val genetic = new TrainEA(population, TestScore)
+    val genetic = new TrainEA(population, GenomeScore)
     genetic.addOperation(0.5, new Splice(genomeSize / 3))
     genetic.addOperation(0.1, new MutatePerturb(0.1))
 
     println("running:")
     for ( i <- 0 until 100 ) {
-      TestScore.scores.clear()
+      GenomeScore.scores.clear()
 
       val organisms = new mutable.HashMap[DoubleArrayGenome, Box2DSimulationOrganism]
       for( phenotype <- population.flatten() ) {
@@ -110,9 +109,11 @@ object Simulation {
       }
 
       //assert(TestScore.scores.size == populationSize, "not enough scores calculated")
+      val all = genetic.getPopulation.flatten.map(_.getScore).sorted.map("%5.2f" format _)
+      println(s"$i: $all")
       genetic.iteration()
       val best = genetic.getBestGenome.asInstanceOf[DoubleArrayGenome]
-      println(s"$i: best: ${genetic.getError}")
+      println(f"$i%d: best: ${best.getScore}%5.2f")
     }
     println("done")
     Display.destroy()
