@@ -32,7 +32,7 @@ class Box2DCreature extends Creature {
   gb("brain") = dummyBrain.getWeights
 
   var genome = gb.toGenome
-  var maxSimulationSteps = 500
+  var maxSimulationSteps = 1000
   var simulationTimeStep = 1/60f
   def currentGenome = genome
 
@@ -71,7 +71,7 @@ class Box2DCreature extends Creature {
         val jointBones = Array(backBone, leftLeg, leftFoot, rightLeg, rightFoot)*/
     val maxMotorSpeed = 5f
     val maxMotorTorque = 5000f
-    val head      = new RootBone(world, length = 0.2, thickness = 0.2, pos = Vec2(0,2), angle = -0.5*PI)
+    val head      = new RootBone(world, length = 0.2, thickness = 0.2, pos = Vec2(0,0.3), angle = 0.0)
     val back      = new JointBone(world, length = 0.6, thickness = 0.15, parent = head, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
 
     val leftArm   = new JointBone(world, length = 0.3, thickness = 0.1, parent = back, jointAttach = 0.2, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
@@ -133,7 +133,7 @@ class Box2DCreature extends Creature {
       sum += straightBody
       if( straightBody > 2 && vel > 0 ) {
         sum += vel*3
-        sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
+        //sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
       }
 
       sum

@@ -16,7 +16,7 @@ object Main extends SimpleSwingApplication {
 
   val renderArea = new LWJGLComponent(new Dimension(width, height)) {
     val fps = 60
-    var zoom = 1f/10f
+    var zoom = 1f/100f
     var translation = new Vec2(0,-200)
     def componentMousePos = new Vec2(Mouse.getX, Mouse.getY)
     def mousePos = componentMousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
