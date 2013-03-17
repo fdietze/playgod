@@ -7,7 +7,7 @@ import org.jbox2d.common.MathUtils._
 abstract class Creature {
   var genome:Genome
   def create:Organism
-  def create(n:Int):Seq[Organism]
+  //def create(n:Int):Seq[Organism]
 }
 
 class Box2DCreature extends Creature {
@@ -44,15 +44,15 @@ class Box2DCreature extends Creature {
     gb.toGenome
   }
 
-  def create(n:Int) = {
+  /*def create(n:Int) = {
     for( _ <- 0 until n) yield {
       genome = randomGenome
       create
     }
-  }
+  }*/
 
-  def create = new Box2DSimulationOrganism {
-    override val maxSteps = maxSimulationSteps
+ class Orga extends Box2DSimulationOrganism with SimpleActor {
+    maxSteps = maxSimulationSteps
     override val timeStep = simulationTimeStep
     val genome = currentGenome
     //val sk = genome[NamedChromosome]("skeleton")
@@ -111,14 +111,16 @@ class Box2DCreature extends Creature {
     assert( brain.inputs.size == dummyBrain.inputs.size )
     assert( brain.outputs.size == dummyBrain.outputs.size )
 
-    def straightBody =
-      (head.body.getPosition.y - back.body.getPosition.y) +
+    def straightBody = (head.body.getPosition.y - leftFoot.body.getPosition.y) +
+      (head.body.getPosition.y - rightFoot.body.getPosition.y)
+      /*(head.body.getPosition.y - back.body.getPosition.y) +
         (back.body.getPosition.y - leftLeg.body.getPosition.y) +
         (leftLeg.body.getPosition.y - leftLowerLeg.body.getPosition.y) +
         (leftLowerLeg.body.getPosition.y - leftFoot.body.getPosition.y) +
         (back.body.getPosition.y - rightLeg.body.getPosition.y) +
         (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y) +
-        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)
+        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)*/
+
 
     override def reward = {
       //val vel = hipBone.body.getLinearVelocity.y
@@ -131,10 +133,10 @@ class Box2DCreature extends Creature {
 
       var sum = 0.0
       sum += straightBody
-      if( straightBody > 2 && vel > 0 ) {
-        sum += vel*3
+      //f( straightBody > 2 && vel > 0 ) {
+        //sum += vel*3
         //sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
-      }
+      //}
 
       sum
     }
@@ -144,18 +146,23 @@ class Box2DCreature extends Creature {
       //back.body.getAngle.abs
       //back.body.getPosition.x.abs / 20
       var sum = 0.0
-      if( straightBody < 2 )
-        sum += back.body.getLinearVelocity.x.abs
+      //if( straightBody < 2 )
+      //  sum += back.body.getLinearVelocity.x.abs
 
       sum
     }
 
     override def step() {
-//      if( genome.isElite )
-//          println(straightBody)
+      processMessages()
       brain.update()
       jointBones.foreach(_.update())
       super.step()
     }
+
+    def receive = {
+      case ChromosomeUpdate("brain",chromosome) =>
+        brain.replaceWeights(chromosome.genes.toArray)
+    }
   }
+  def create = new Orga
 }

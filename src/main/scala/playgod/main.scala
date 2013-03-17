@@ -8,6 +8,8 @@ import swing._
 import event._
 import org.jbox2d.common.Vec2
 import org.lwjgl.input.Mouse
+import concurrent.Future
+import concurrent.ExecutionContext.Implicits.global
 
 
 object Main extends SimpleSwingApplication {
@@ -38,7 +40,7 @@ object Main extends SimpleSwingApplication {
     }
   }
 
-  def creature = Simulation.creature
+  //def creature = Simulation.creature
   //def population = Simulation.population
 
   val top = new swing.MainFrame {
@@ -47,10 +49,10 @@ object Main extends SimpleSwingApplication {
     val panel = new BoxPanel(Orientation.Vertical) {
       contents += new BoxPanel(Orientation.Horizontal) {
         contents += drawBestCheckBox
-        contents += new Label("sub: ")
+        /*contents += new Label("sub: ")
         contents += new SettingTextField(Simulation.subSteps, x => Simulation.subSteps = x.toInt)
         contents += new Label("age: ")
-        contents += new SettingTextField(creature.maxSimulationSteps, x => creature.maxSimulationSteps = x.toInt)
+        contents += new SettingTextField(creature.maxSimulationSteps, x => creature.maxSimulationSteps = x.toInt)*/
         /*contents += new Label("popsize: ")
         contents += new SettingTextField(population.populationSize, x => population.populationSize = x.toInt)
         contents += new Label("cross %: ")
@@ -74,11 +76,19 @@ object Main extends SimpleSwingApplication {
     }
     contents = panel
     panel.requestFocus() // be able to listen to key events
+
   }
 
   override def main(args:Array[String]) {
     super.main(args)
     renderArea.init()
-    Simulation.start()
+    Future { GeneticSimulation.start() }
+    ContinousSimulation.start()
+  }
+
+  override def quit() = {
+    ContinousSimulation.stop()
+    //Display.destroy()
+    super.quit()
   }
 }

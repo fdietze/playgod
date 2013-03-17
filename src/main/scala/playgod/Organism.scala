@@ -6,6 +6,9 @@ import org.jbox2d.dynamics.World
 import org.jbox2d.common.Vec2
 import playgod.Box2DTools.DebugDrawer
 
+import collection.immutable.Queue
+import collection.mutable
+
 
 abstract class Organism {
   def genome:Genome
@@ -19,7 +22,7 @@ abstract class SimulationOrganism extends Organism {
   def penalty = 0.0
   def simulationStep()
 
-  val maxSteps = 500
+  var maxSteps = 500
   var age = 0
   private var mScore = 0.0
   def score = mScore / age
@@ -49,3 +52,6 @@ abstract class Box2DSimulationOrganism extends SimulationOrganism {
   def simulationStep() { world.step(timeStep, 10, 10) }
   def debugDraw() { world.drawDebugData() }
 }
+
+
+case class ChromosomeUpdate(name:String, newChromosome:Chromosome)

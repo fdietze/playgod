@@ -19,9 +19,47 @@ import concurrent.Await
 import concurrent.duration.Duration
 import concurrent.ExecutionContext.Implicits.global
 
-object Simulation {
+case class ReplaceBrain(chromosome:Chromosome)
+
+object ContinousSimulation extends SimpleActor {
+  import Main.renderArea.{r,t,translation,zoom,fps}
   val creature = new Box2DCreature
-  val populationSize = 30
+  val organism = creature.create
+  organism.maxSteps = Int.MaxValue
+  private var running = true
+  def start() {
+    running = true
+    while( running ) {
+      organism.step()
+
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+      glLoadIdentity()
+      glScalef(1 / r, 1 / t, 1f)
+      glTranslatef(translation.x*zoom, translation.y*zoom, 0)
+
+      organism.debugDraw()
+      //Stats.draw()
+
+      Display.update()
+      Display.sync(fps)
+      //updateFps()
+
+      InputEvents.processEvents()
+      processMessages()
+    }
+  }
+
+  def stop() { running = false }
+  def receive = {
+    case ReplaceBrain(chromosome) =>
+        organism ! ChromosomeUpdate("brain", chromosome)
+        println("brain updated")
+  }
+}
+
+object GeneticSimulation {
+  val creature = new Box2DCreature
+  val populationSize = 100
   var subSteps = 10
   var generation = 0
 
@@ -64,6 +102,7 @@ object Simulation {
         val genome = phenotype.asInstanceOf[DoubleArrayGenome]
         creature.genome = creature.genome.update(genome.getData)
         val organism = creature.create
+        organism.maxSteps = 300
         organism.finish()
         organism.score
       }
@@ -72,19 +111,14 @@ object Simulation {
     }
 
     val genetic = new TrainEA(population, GenomeScore)
-    genetic.addOperation(0.9, new Splice(genomeSize / 5))
-    genetic.addOperation(0.2, new MutatePerturb(0.1))
+    genetic.addOperation(0.9, new Splice(genomeSize / 3))
+    genetic.addOperation(0.1, new MutatePerturb(0.2))
 
     //genetic.iteration()
     println("running:")
     var lastBest = Double.MinValue
-    for ( i <- 0 until 50 ) {
-      //val iterationProcess = concurrent.future {
+    for ( i <- 0 until 50000 ) {
         genetic.iteration()
-        //println("iteration done.")
-      //}
-
-
 
       val all = genetic.getPopulation.flatten.map(_.getScore).sorted.map("%5.2f" format _)
       println(s"$i: $all")
@@ -94,23 +128,7 @@ object Simulation {
       if( best.getScore > lastBest ) {
         lastBest = best.getScore
         creature.genome = creature.genome.update(best.getData)
-        //creature.maxSimulationSteps = 10000
-        val organism = creature.create
-        for( step <- 0 until organism.maxSteps ) {
-          organism.step()
-
-          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-          glLoadIdentity()
-          glScalef(1 / r, 1 / t, 1f)
-          glTranslatef(translation.x*zoom, translation.y*zoom, 0)
-
-          organism.debugDraw()
-          //Stats.draw()
-
-          Display.update()
-          Display.sync(fps)
-          //updateFps()
-        }
+        ContinousSimulation ! ReplaceBrain(creature.genome("brain"))
       }
 
       //Await.ready(iterationProcess, Duration.Inf)
