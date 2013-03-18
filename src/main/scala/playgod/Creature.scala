@@ -36,7 +36,7 @@ class Box2DCreature extends Creature {
   var simulationTimeStep = 1/60f
   def currentGenome = genome
 
-  println("genes: %d (%d synapses)" format(genome.genes.size, genome[PlainChromosome]("brain").size))
+  //println("genes: %d (%d synapses)" format(genome.genes.size, genome[PlainChromosome]("brain").size))
 
   def randomGenome = {
     dummyBrain.randomizeWeights()
@@ -71,7 +71,7 @@ class Box2DCreature extends Creature {
         val jointBones = Array(backBone, leftLeg, leftFoot, rightLeg, rightFoot)*/
     val maxMotorSpeed = 5f
     val maxMotorTorque = 5000f
-    val head      = new RootBone(world, length = 0.2, thickness = 0.2, pos = Vec2(0,0.3), angle = 0.0)
+    val head      = new RootBone(world, length = 0.2, thickness = 0.2, pos = Vec2(0,3), angle = 0.0)
     val back      = new JointBone(world, length = 0.6, thickness = 0.15, parent = head, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
 
     val leftArm   = new JointBone(world, length = 0.3, thickness = 0.1, parent = back, jointAttach = 0.2, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
@@ -89,9 +89,20 @@ class Box2DCreature extends Creature {
     val bones = Array(head, back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
     val jointBones = Array( back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
 
+    def boneStates = bones map {b => import b.body._; BoneState(getPosition, getLinearVelocity, getAngle, getAngularVelocity)}
+    def setBoneStates(states:IndexedSeq[BoneState]) {
+      for( (bone,state) <- bones zip states ) {
+        import bone.body._
+        import state._
+        setTransform(pos,angle)
+        setLinearVelocity(vel)
+        setAngularVelocity(angleVel)
+      }
+    }
+
     val bodies = bones map (_.body)
-    def outToAngle(out:Double) = (out*0.5*PI).toFloat
-    val brain = new Brain(
+    def outToAngle(out:Double) = ((out*2-1)*0.5*PI).toFloat
+    val brain = new NeatBrain(
       inputs = bodies.flatMap( body => Array(
         Sensor(body.getLinearVelocity.x),
         Sensor(body.getLinearVelocity.y),
@@ -105,21 +116,18 @@ class Box2DCreature extends Creature {
       ) ),
       outputs = jointBones.map( bone =>
         Effector{param => bone.angleTarget = outToAngle(param)}
-      ),
-      initialWeights = Some(brainGenes.genes.toArray)
+      )
     )
     assert( brain.inputs.size == dummyBrain.inputs.size )
     assert( brain.outputs.size == dummyBrain.outputs.size )
 
-    def straightBody = (head.body.getPosition.y - leftFoot.body.getPosition.y) +
-      (head.body.getPosition.y - rightFoot.body.getPosition.y)
-      /*(head.body.getPosition.y - back.body.getPosition.y) +
+    def straightBody = (head.body.getPosition.y - back.body.getPosition.y) +
         (back.body.getPosition.y - leftLeg.body.getPosition.y) +
         (leftLeg.body.getPosition.y - leftLowerLeg.body.getPosition.y) +
         (leftLowerLeg.body.getPosition.y - leftFoot.body.getPosition.y) +
         (back.body.getPosition.y - rightLeg.body.getPosition.y) +
         (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y) +
-        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)*/
+        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)
 
 
     override def reward = {
@@ -133,10 +141,10 @@ class Box2DCreature extends Creature {
 
       var sum = 0.0
       sum += straightBody
-      //f( straightBody > 2 && vel > 0 ) {
-        //sum += vel*3
+      if( straightBody > 2 && vel > 0 ) {
+        sum += vel*3
         //sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
-      //}
+      }
 
       sum
     }
@@ -146,8 +154,8 @@ class Box2DCreature extends Creature {
       //back.body.getAngle.abs
       //back.body.getPosition.x.abs / 20
       var sum = 0.0
-      //if( straightBody < 2 )
-      //  sum += back.body.getLinearVelocity.x.abs
+      if( straightBody < 2 )
+        sum += back.body.getLinearVelocity.x.abs
 
       sum
     }
@@ -160,8 +168,9 @@ class Box2DCreature extends Creature {
     }
 
     def receive = {
-      case ChromosomeUpdate("brain",chromosome) =>
-        brain.replaceWeights(chromosome.genes.toArray)
+      case _ =>
+      //case ChromosomeUpdate("brain",chromosome) =>
+      //  brain.replaceWeights(chromosome.genes.toArray)
     }
   }
   def create = new Orga

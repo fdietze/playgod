@@ -3,6 +3,23 @@ package playgod
 import org.encog.neural.networks.BasicNetwork
 import org.encog.neural.networks.layers.BasicLayer
 import org.encog.engine.network.activation.ActivationTANH
+import org.encog.neural.neat.NEATNetwork
+import collection.JavaConversions._
+import org.encog.ml.data.MLData
+import org.encog.ml.data.basic.BasicMLData
+
+class NeatBrain(val inputs:Array[Sensor], val outputs:Array[Effector]) {
+  var network:NEATNetwork = null
+
+  def update() {
+    if (network == null) return
+    val inputValues = new BasicMLData(inputs.map(_.getValue))
+    val outputValues = network.compute(inputValues).getData
+    for( (effector,param) <- outputs zip outputValues )
+      effector.act(param)
+  }
+}
+
 
 class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWeights:Option[Array[Double]] = None) {
 

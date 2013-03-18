@@ -18,6 +18,10 @@ import org.encog.util.EngineArray
 import concurrent.Await
 import concurrent.duration.Duration
 import concurrent.ExecutionContext.Implicits.global
+import org.encog.neural.hyperneat.substrate.SubstrateFactory
+import org.encog.neural.neat.{NEATUtil, NEATPopulation, NEATNetwork}
+import org.encog.ml.data.basic.BasicMLData
+import org.encog.neural.neat.training.species.OriginalNEATSpeciation
 
 case class ReplaceBrain(chromosome:Chromosome)
 
@@ -54,6 +58,57 @@ object ContinousSimulation extends SimpleActor {
     case ReplaceBrain(chromosome) =>
         organism ! ChromosomeUpdate("brain", chromosome)
         println("brain updated")
+  }
+}
+
+object NeatSimulation {
+  def start() {
+    val creature = new Box2DCreature
+    val dummyBrain = creature.create.brain
+
+
+    val score = new CalculateScore {
+
+      def calculateScore(phenotype:MLMethod) = {
+        val network = phenotype.asInstanceOf[NEATNetwork]
+        //creature.genome = creature.genome.update(genome.getData)
+        val organism = creature.create
+        organism.brain.network = network
+        organism.maxSteps = 60
+        organism.setBoneStates(ContinousSimulation.organism.boneStates)
+        organism.finish()
+        organism.score
+      }
+
+      def shouldMinimize(): Boolean = false
+      def requireSingleThreaded(): Boolean = true
+    }
+    val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,150)
+    pop.setActivationCycles(5)
+    pop.setInitialConnectionDensity(0.2)
+    //pop.setSurvivalRate(0.0)
+    pop.reset()
+
+    val train = NEATUtil.constructNEATTrainer(pop,score)
+
+    var speciation = new OriginalNEATSpeciation()
+    //speciation.setCompatibilityThreshold(1)
+    //speciation.setMaxNumberOfSpecies(2)
+    train.setSpeciation(speciation)
+
+    var lastBestScore = Double.MinValue
+    for( i <- 0 until 100000 ) {
+      train.iteration()
+      val best = train.getCODEC().decode(train.getBestGenome()).asInstanceOf[NEATNetwork]
+      val bestGenome = train.getBestGenome
+      val bestScore = bestGenome.getScore
+      //if( bestScore > lastBestScore ) {
+        lastBestScore = bestScore
+        println("i: %d best: %5.3f, synapses: %d" format (i, bestScore, best.getLinks.size))
+        ContinousSimulation.organism.brain.network = best
+        bestGenome.setScore(ContinousSimulation.organism.currentScore)
+      //}
+    }
   }
 }
 

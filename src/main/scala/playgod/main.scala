@@ -80,9 +80,9 @@ object Main extends SimpleSwingApplication {
   }
 
   override def main(args:Array[String]) {
+    Future { NeatSimulation.start() }
     super.main(args)
     renderArea.init()
-    Future { GeneticSimulation.start() }
     ContinousSimulation.start()
   }
 

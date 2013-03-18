@@ -41,6 +41,8 @@ abstract class Bone(val world:World,
   body.createFixture(fixtureDef)
 }
 
+case class BoneState(pos:Vec2,vel:Vec2,angle:Float,angleVel:Float)
+
 class RootBone(world:World, length:Float, thickness:Float, pos:Vec2, angle:Float)
   extends Bone(world, length, thickness, angle, pos) {
   def this(world:World, length:Double, thickness:Double, pos:Vec2, angle:Double) = {
