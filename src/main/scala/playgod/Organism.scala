@@ -53,6 +53,3 @@ abstract class Box2DSimulationOrganism extends SimulationOrganism {
   def simulationStep() { world.step(timeStep, 10, 10) }
   def debugDraw() { world.drawDebugData() }
 }
-
-
-case class ChromosomeUpdate(name:String, newChromosome:Chromosome)

@@ -20,7 +20,7 @@ object InputEvents {
     while( Mouse.next ) {
       ( getEventButton, getEventButtonState ) match {
         case (0 , true) => // left down
-          val organism = ContinousSimulation.organism
+          val organism = LiveSimulation.organism
           val world = organism.world
 
           val tolerance = new Vec2(0.01f, 0.01f)
@@ -47,7 +47,7 @@ object InputEvents {
           }
         case (0 , false) => // left up
           if( mouseJoint.isDefined ) {
-            val organism = ContinousSimulation.organism
+            val organism = LiveSimulation.organism
             val world = organism.world
             world.destroyJoint(mouseJoint.get)
           }
@@ -76,7 +76,7 @@ object InputEvents {
     while(Keyboard.next) {
       val key = Keyboard.getEventKey
       if( Keyboard.getEventKeyState ) { // Key down
-        //if( key == Keyboard.KEY_R) population.reset()
+        if( key == Keyboard.KEY_R) LiveSimulation ! Reset
         //if( key == Keyboard.KEY_LEFT) arrowDirection = -1
         //if( key == Keyboard.KEY_RIGHT) arrowDirection = 1
         //if( key == Keyboard.KEY_A) autoArrowDirections = !autoArrowDirections

@@ -27,8 +27,9 @@ class Box2DCreature extends Creature {
   gb[NamedChromosomeBuilder]("skeleton")("footRestAngle") = 0*/
 
   val sensorCount = 7
-  val boneCount = 12
-  val dummyBrain = new Brain(new Array[Sensor](sensorCount*boneCount), new Array[Effector](boneCount -1))
+  val sensorBoneCount = 7
+  val effectorBoneCount = 10
+  val dummyBrain = new FeedForwardBrain(new Array[Sensor](sensorCount*sensorBoneCount), new Array[Effector](effectorBoneCount))
   gb("brain") = dummyBrain.getWeights
 
   var genome = gb.toGenome
@@ -81,15 +82,17 @@ class Box2DCreature extends Creature {
 
     val leftLeg   = new JointBone(world, length = 0.5, thickness = 0.15, parent = back, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
     val leftLowerLeg   = new JointBone(world, length = 0.5, thickness = 0.1, parent = leftLeg, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
-    val leftFoot   = new JointBone(world, length = 0.3, thickness = 0.05, parent = leftLowerLeg, jointAttach = 1, restAngle = 0.5*PI, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val leftFoot   = new JointBone(world, length = 0.3, thickness = 0.05, parent = leftLowerLeg, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
     val rightLeg   = new JointBone(world, length = 0.5, thickness = 0.15, parent = back, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
     val rightLowerLeg   = new JointBone(world, length = 0.5, thickness = 0.1, parent = rightLeg, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
-    val rightFoot   = new JointBone(world, length = 0.3, thickness = 0.05, parent = rightLowerLeg, jointAttach = 1, restAngle = 0.5*PI, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
+    val rightFoot   = new JointBone(world, length = 0.3, thickness = 0.05, parent = rightLowerLeg, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
 
     val bones = Array(head, back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
-    val jointBones = Array( back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
+    val jointBones = Array( leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
+    val sensorBones = Array(back, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
+    val effectorBones = jointBones
 
-    def boneStates = bones map {b => import b.body._; BoneState(getPosition, getLinearVelocity, getAngle, getAngularVelocity)}
+    def boneStates = bones map {b => import b.body._; BoneState(getPosition.clone, getLinearVelocity.clone, getAngle, getAngularVelocity)}
     def setBoneStates(states:IndexedSeq[BoneState]) {
       for( (bone,state) <- bones zip states ) {
         import bone.body._
@@ -100,10 +103,10 @@ class Box2DCreature extends Creature {
       }
     }
 
-    val bodies = bones map (_.body)
-    def outToAngle(out:Double) = ((out*2-1)*0.5*PI).toFloat
-    val brain = new NeatBrain(
-      inputs = bodies.flatMap( body => Array(
+    val sensorBodies = sensorBones map (_.body)
+    def outToAngle(out:Double) = ((out*2-1)*0.8*PI).toFloat
+    var brain:Brain = new FeedForwardBrain(
+      inputs = sensorBodies.flatMap( body => Array(
         Sensor(body.getLinearVelocity.x),
         Sensor(body.getLinearVelocity.y),
         // Sensor(body.getAngularVelocity),
@@ -121,13 +124,14 @@ class Box2DCreature extends Creature {
     assert( brain.inputs.size == dummyBrain.inputs.size )
     assert( brain.outputs.size == dummyBrain.outputs.size )
 
-    def straightBody = (head.body.getPosition.y - back.body.getPosition.y) +
+    def straightBody = (2*head.body.getPosition.y - leftFoot.body.getPosition.y - rightFoot.body.getPosition.y) +
+        (head.body.getPosition.y - back.body.getPosition.y) +
         (back.body.getPosition.y - leftLeg.body.getPosition.y) +
         (leftLeg.body.getPosition.y - leftLowerLeg.body.getPosition.y) +
         (leftLowerLeg.body.getPosition.y - leftFoot.body.getPosition.y) +
         (back.body.getPosition.y - rightLeg.body.getPosition.y) +
         (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y) +
-        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)
+        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)// */
 
 
     override def reward = {
@@ -141,10 +145,10 @@ class Box2DCreature extends Creature {
 
       var sum = 0.0
       sum += straightBody
-      if( straightBody > 2 && vel > 0 ) {
+      /*if( straightBody > 2 && vel > 0 ) {
         sum += vel*3
         //sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
-      }
+      }*/
 
       sum
     }
@@ -154,23 +158,23 @@ class Box2DCreature extends Creature {
       //back.body.getAngle.abs
       //back.body.getPosition.x.abs / 20
       var sum = 0.0
-      if( straightBody < 2 )
-        sum += back.body.getLinearVelocity.x.abs
+      //if( straightBody < 2 )
+        //sum += back.body.getLinearVelocity.x.abs * 0.5f
 
       sum
     }
 
     override def step() {
       processMessages()
-      brain.update()
+      brain.think()
       jointBones.foreach(_.update())
       super.step()
     }
 
     def receive = {
-      case _ =>
-      //case ChromosomeUpdate("brain",chromosome) =>
-      //  brain.replaceWeights(chromosome.genes.toArray)
+      //case _ =>
+      case BrainUpdate(newBrain) =>
+        brain = newBrain
     }
   }
   def create = new Orga

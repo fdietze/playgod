@@ -23,12 +23,14 @@ import org.encog.neural.neat.{NEATUtil, NEATPopulation, NEATNetwork}
 import org.encog.ml.data.basic.BasicMLData
 import org.encog.neural.neat.training.species.OriginalNEATSpeciation
 
-case class ReplaceBrain(chromosome:Chromosome)
+case object Reset
+case class BrainUpdate(brain:Brain)
 
-object ContinousSimulation extends SimpleActor {
+object LiveSimulation extends SimpleActor {
   import Main.renderArea.{r,t,translation,zoom,fps}
   val creature = new Box2DCreature
   val organism = creature.create
+  val initialBoneStates = organism.boneStates
   organism.maxSteps = Int.MaxValue
   private var running = true
   def start() {
@@ -55,9 +57,11 @@ object ContinousSimulation extends SimpleActor {
 
   def stop() { running = false }
   def receive = {
-    case ReplaceBrain(chromosome) =>
-        organism ! ChromosomeUpdate("brain", chromosome)
-        println("brain updated")
+    case BrainUpdate(brain) =>
+      organism ! BrainUpdate(brain)
+
+    case Reset =>
+      organism.setBoneStates(initialBoneStates)
   }
 }
 
@@ -65,49 +69,48 @@ object NeatSimulation {
   def start() {
     val creature = new Box2DCreature
     val dummyBrain = creature.create.brain
+    var currentBoneStates = LiveSimulation.organism.boneStates
 
 
     val score = new CalculateScore {
 
       def calculateScore(phenotype:MLMethod) = {
         val network = phenotype.asInstanceOf[NEATNetwork]
-        //creature.genome = creature.genome.update(genome.getData)
         val organism = creature.create
-        organism.brain.network = network
+
+        organism ! BrainUpdate(organism.brain.update(network))
         organism.maxSteps = 60
-        organism.setBoneStates(ContinousSimulation.organism.boneStates)
+        organism.setBoneStates(currentBoneStates)
         organism.finish()
-        organism.score
+        -organism.score
       }
 
-      def shouldMinimize(): Boolean = false
-      def requireSingleThreaded(): Boolean = true
+      def shouldMinimize(): Boolean = true
+      def requireSingleThreaded(): Boolean = false
     }
-    val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,150)
+    val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,60)
     pop.setActivationCycles(5)
-    pop.setInitialConnectionDensity(0.2)
+    pop.setInitialConnectionDensity(0.1)
     //pop.setSurvivalRate(0.0)
     pop.reset()
 
     val train = NEATUtil.constructNEATTrainer(pop,score)
 
-    var speciation = new OriginalNEATSpeciation()
-    //speciation.setCompatibilityThreshold(1)
+    val speciation = new OriginalNEATSpeciation()
+    speciation.setCompatibilityThreshold(1)
     //speciation.setMaxNumberOfSpecies(2)
     train.setSpeciation(speciation)
 
-    var lastBestScore = Double.MinValue
     for( i <- 0 until 100000 ) {
+      currentBoneStates = LiveSimulation.organism.boneStates
       train.iteration()
       val best = train.getCODEC().decode(train.getBestGenome()).asInstanceOf[NEATNetwork]
       val bestGenome = train.getBestGenome
       val bestScore = bestGenome.getScore
-      //if( bestScore > lastBestScore ) {
-        lastBestScore = bestScore
-        println("i: %d best: %5.3f, synapses: %d" format (i, bestScore, best.getLinks.size))
-        ContinousSimulation.organism.brain.network = best
-        bestGenome.setScore(ContinousSimulation.organism.currentScore)
-      //}
+
+      println("i: %d best: %5.3f, links: %d" format (i, bestScore, best.getLinks.size))
+      LiveSimulation ! BrainUpdate(LiveSimulation.organism.brain.update(best))
+      bestGenome.setScore(-LiveSimulation.organism.currentScore)
     }
   }
 }
@@ -129,6 +132,7 @@ object GeneticSimulation {
 
     import Main.renderArea.{r,t,translation,zoom,fps}
     val genomeSize = creature.genome.genes.size
+    var currentBoneStates = LiveSimulation.organism.boneStates
 
     val genomeFactory = new GenomeFactory() {
       def factor = new DoubleArrayGenome(genomeSize)
@@ -157,11 +161,12 @@ object GeneticSimulation {
         val genome = phenotype.asInstanceOf[DoubleArrayGenome]
         creature.genome = creature.genome.update(genome.getData)
         val organism = creature.create
-        organism.maxSteps = 300
+        organism.maxSteps = 60
+        organism.setBoneStates(currentBoneStates)
         organism.finish()
-        organism.score
+        -organism.score
       }
-      def shouldMinimize = false
+      def shouldMinimize = true
       def requireSingleThreaded = false
     }
 
@@ -171,22 +176,18 @@ object GeneticSimulation {
 
     //genetic.iteration()
     println("running:")
-    var lastBest = Double.MinValue
     for ( i <- 0 until 50000 ) {
-        genetic.iteration()
+      currentBoneStates = LiveSimulation.organism.boneStates
+      genetic.iteration()
 
       val all = genetic.getPopulation.flatten.map(_.getScore).sorted.map("%5.2f" format _)
-      println(s"$i: $all")
+      //println(s"$i: $all")
       val best = genetic.getBestGenome.asInstanceOf[DoubleArrayGenome]
       println(f"$i%d: best: ${best.getScore}%5.2f")
 
-      if( best.getScore > lastBest ) {
-        lastBest = best.getScore
-        creature.genome = creature.genome.update(best.getData)
-        ContinousSimulation ! ReplaceBrain(creature.genome("brain"))
-      }
-
-      //Await.ready(iterationProcess, Duration.Inf)
+      creature.dummyBrain.replaceWeights(best.getData)
+      LiveSimulation ! BrainUpdate(LiveSimulation.organism.brain.update(creature.dummyBrain.network))
+      best.setScore(-LiveSimulation.organism.currentScore)
     }
 
     println("done")

@@ -83,11 +83,11 @@ object Main extends SimpleSwingApplication {
     Future { NeatSimulation.start() }
     super.main(args)
     renderArea.init()
-    ContinousSimulation.start()
+    LiveSimulation.start()
   }
 
   override def quit() = {
-    ContinousSimulation.stop()
+    LiveSimulation.stop()
     //Display.destroy()
     super.quit()
   }

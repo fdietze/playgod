@@ -7,21 +7,37 @@ import org.encog.neural.neat.NEATNetwork
 import collection.JavaConversions._
 import org.encog.ml.data.MLData
 import org.encog.ml.data.basic.BasicMLData
+import org.encog.ml.MLMethod
 
-class NeatBrain(val inputs:Array[Sensor], val outputs:Array[Effector]) {
-  var network:NEATNetwork = null
-
-  def update() {
+abstract class Brain {
+  type Network = MLMethod { def compute(input:MLData):MLData }
+  val network:Network
+  val inputs:Array[Sensor]
+  val outputs:Array[Effector]
+  def think() {
     if (network == null) return
     val inputValues = new BasicMLData(inputs.map(_.getValue))
     val outputValues = network.compute(inputValues).getData
     for( (effector,param) <- outputs zip outputValues )
       effector.act(param)
   }
+  def update(newNetwork:Network) = {
+    def in = inputs
+    def out = outputs
+    new Brain {
+      val inputs = in
+      val outputs = out
+      val network = newNetwork
+    }
+  }
+}
+
+class NeatBrain(val inputs:Array[Sensor], val outputs:Array[Effector]) extends Brain {
+  val network:NEATNetwork = null
 }
 
 
-class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWeights:Option[Array[Double]] = None) {
+class FeedForwardBrain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWeights:Option[Array[Double]] = None) extends Brain {
 
   val network = new BasicNetwork
   network.addLayer(new BasicLayer(null,false, inputs.size))
@@ -29,12 +45,6 @@ class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWe
   //network.addLayer(new BasicLayer(new ActivationTANH,true,inputs.size))
   network.addLayer(new BasicLayer(new ActivationTANH,false,outputs.size))
   network.getStructure.finalizeStructure()
-  /*val pattern = new ElmanPattern
-  pattern.setActivationFunction(new ActivationTANH)
-  pattern.setInputNeurons(inputs.size)
-  pattern.addHiddenLayer(inputs.size)
-  pattern.setOutputNeurons(outputs.size)
-  val network = pattern.generate().asInstanceOf[BasicNetwork]*/
 
   val randomizer = new org.encog.mathutil.randomize.GaussianRandomizer(0,1)
 
@@ -54,14 +64,6 @@ class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWe
 
   def randomizeWeights() {
     randomizer.randomize(network)
-  }
-
-  def update() {
-    val inputValues = inputs.map(_.getValue)
-    val outputValues = new Array[Double](outputs.size)
-    network.compute(inputValues, outputValues)
-    for( (effector,param) <- outputs zip outputValues )
-      effector.act(param)
   }
 }
 
