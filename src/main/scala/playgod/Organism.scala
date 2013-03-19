@@ -25,14 +25,14 @@ abstract class SimulationOrganism extends Organism {
   var maxSteps = 500
   var age = 0
   private var scoreSum = 0.0
-  def score = scoreSum / age
+  def score = currentScore
   def currentScore = reward - penalty
 
   def step() {
     if ( age < maxSteps ) {
       simulationStep()
       age += 1
-      scoreSum += currentScore
+      //scoreSum += currentScore
 
       if( age >= maxSteps )
         fitness = score

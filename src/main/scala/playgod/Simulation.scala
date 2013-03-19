@@ -59,6 +59,7 @@ object LiveSimulation extends SimpleActor {
   def receive = {
     case BrainUpdate(brain) =>
       organism ! BrainUpdate(brain)
+      //this ! Reset
 
     case Reset =>
       organism.setBoneStates(initialBoneStates)
@@ -69,17 +70,18 @@ object NeatSimulation {
   def start() {
     val creature = new Box2DCreature
     val dummyBrain = creature.create.brain
-    var currentBoneStates = LiveSimulation.organism.boneStates
-
+    def currentBoneStates = LiveSimulation.organism.boneStates
+    var scoreCalculations = 0
 
     val score = new CalculateScore {
 
       def calculateScore(phenotype:MLMethod) = {
+        scoreCalculations += 1
         val network = phenotype.asInstanceOf[NEATNetwork]
         val organism = creature.create
 
         organism ! BrainUpdate(organism.brain.update(network))
-        organism.maxSteps = 60
+        organism.maxSteps = 120
         organism.setBoneStates(currentBoneStates)
         organism.finish()
         -organism.score
@@ -88,37 +90,51 @@ object NeatSimulation {
       def shouldMinimize(): Boolean = true
       def requireSingleThreaded(): Boolean = false
     }
-    val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,60)
-    pop.setActivationCycles(5)
-    pop.setInitialConnectionDensity(0.1)
-    //pop.setSurvivalRate(0.0)
+    val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,100)
+    //pop.setActivationCycles(5)
+    pop.setInitialConnectionDensity(0.5)
+    pop.setSurvivalRate(0.0)
     pop.reset()
 
     val train = NEATUtil.constructNEATTrainer(pop,score)
 
     val speciation = new OriginalNEATSpeciation()
-    speciation.setCompatibilityThreshold(1)
-    //speciation.setMaxNumberOfSpecies(2)
+    //speciation.setCompatibilityThreshold(1)
+    //speciation.setMaxNumberOfSpecies(1)
     train.setSpeciation(speciation)
 
+    var lastBest = Double.MaxValue
     for( i <- 0 until 100000 ) {
-      currentBoneStates = LiveSimulation.organism.boneStates
+      scoreCalculations = 0
+      //currentBoneStates = LiveSimulation.organism.boneStates
       train.iteration()
-      val best = train.getCODEC().decode(train.getBestGenome()).asInstanceOf[NEATNetwork]
       val bestGenome = train.getBestGenome
+      val best = train.getCODEC().decode(bestGenome).asInstanceOf[NEATNetwork]
       val bestScore = bestGenome.getScore
+      //if( bestScore < lastBest ) {
+        lastBest = bestScore
 
-      println("i: %d best: %5.3f, links: %d" format (i, bestScore, best.getLinks.size))
-      LiveSimulation ! BrainUpdate(LiveSimulation.organism.brain.update(best))
-      bestGenome.setScore(-LiveSimulation.organism.currentScore)
+      for( species <- pop.getSpecies.par ) {
+        val leader = species.getLeader
+        val leaderNet = train.getCODEC().decode(leader).asInstanceOf[NEATNetwork]
+        leader.setScore(score.calculateScore(leaderNet))
+      }
+      bestGenome.setScore(score.calculateScore(best))
+
+      val currentBestGenome = train.getBestGenome
+      val currentBest = train.getCODEC().decode(currentBestGenome).asInstanceOf[NEATNetwork]
+      val currentBestScore = currentBestGenome.getScore
+      println("i: %d best: %5.3f, links: %d, scored: %d, species: %d" format (
+        i, currentBestScore, currentBest.getLinks.size, scoreCalculations, pop.getSpecies.size))
+      LiveSimulation ! BrainUpdate(LiveSimulation.organism.brain.update(currentBest))
+      //}
     }
   }
 }
 
 object GeneticSimulation {
   val creature = new Box2DCreature
-  val populationSize = 100
-  var subSteps = 10
+  val populationSize = 50
   var generation = 0
 
   var arrowDirection = 0
@@ -161,7 +177,7 @@ object GeneticSimulation {
         val genome = phenotype.asInstanceOf[DoubleArrayGenome]
         creature.genome = creature.genome.update(genome.getData)
         val organism = creature.create
-        organism.maxSteps = 60
+        organism.maxSteps = 500
         organism.setBoneStates(currentBoneStates)
         organism.finish()
         -organism.score
