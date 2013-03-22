@@ -16,7 +16,7 @@ object Main extends SimpleSwingApplication {
   val width = 800
   val height = 600
 
-  val renderArea = new LWJGLComponent(new Dimension(width, height)) {
+  val renderArea = new LWJGLComponent(new Dimension(width, height)) with Stretch {
     val fps = 60
     var zoom = 1f/100f
     var translation = new Vec2(0,-200)
@@ -39,18 +39,26 @@ object Main extends SimpleSwingApplication {
       glLoadIdentity()
       glMatrixMode(GL_MODELVIEW_MATRIX)
     }
+    
+    reactions += {
+      case e:UIElementResized =>
+        println(preferredSize)
+        println(maximumSize)
+        println(size)
+        preferredSize = size
+    }
+
   }
 
   //def creature = Simulation.creature
   //def population = Simulation.population
 
-  val top = new swing.MainFrame {
+  val top = new MainFrame {
     val autoCameraCheckBox = new CheckBox("Auto Camera")
     /*val backgroundSimulationCheckBox = new CheckBox("Background Simulation") {
       selected = true
       reactions += {
         case e:ButtonClicked =>
-          println(e)
           if( selected ) NeatSimulation ! Stop
           else           NeatSimulation ! Start
       }
@@ -63,19 +71,22 @@ object Main extends SimpleSwingApplication {
         contents += new ActionButton("Reset", LiveSimulation ! Reset)
       }
 
-      contents += renderArea
       
+      contents += new BoxPanel(Orientation.Horizontal) {
+        contents += renderArea
+      }
+
       listenTo(keys)
       reactions += {
         case KeyPressed(_, Key.Escape, _, _) =>
           quit()
       }
-
     }
     contents = panel
     panel.requestFocus() // be able to listen to key events
-
   }
+  
+  renderArea.listenTo(top)
 
   override def main(args:Array[String]) {
     Future { NeatSimulation.start() }
