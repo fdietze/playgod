@@ -91,7 +91,7 @@ class Box2DCreature extends Creature {
 
     val bones = Array(head, back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
     val jointBones = Array( back, leftArm, leftLowerArm, rightArm, rightLowerArm, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
-    val sensorBones = Array(back, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
+    val sensorBones = bones//Array(back, leftLeg, leftLowerLeg, leftFoot, rightLeg, rightLowerLeg, rightFoot)
     val effectorBones = jointBones // */
 
     def boneStates = bones map {b => import b.body._; BoneState(getPosition.clone, getLinearVelocity.clone, getAngle, getAngularVelocity)}
@@ -135,7 +135,6 @@ class Box2DCreature extends Creature {
         (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y) +
         (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)// */
 
-
     override def reward = {
       //val vel = hipBone.body.getLinearVelocity.y
       //if( vel > 0 ) vel*2 else vel
@@ -146,12 +145,12 @@ class Box2DCreature extends Creature {
       // back.body.getLinearVelocity.x *
 
       var sum = 0.0
-      sum += straightBody min 2
+      sum += straightBody min 1.7f
       /*sum += backBone.body.getPosition.y - hipBone.body.getPosition.y
       sum += hipBone.body.getPosition.y - leftFoot.body.getPosition.y
       sum += hipBone.body.getPosition.y - rightFoot.body.getPosition.y*/
-      if( straightBody > 2 && vel > 0 ) {
-        sum += vel*3
+      if( straightBody >= 1.7 && vel > 0 ) {
+        sum += vel
         //sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
       }
 
@@ -164,8 +163,8 @@ class Box2DCreature extends Creature {
       //back.body.getPosition.x.abs / 20
       var sum = 0.0
       //sum += hipBone.body.getAngle.abs * 10
-      //if( straightBody < 2 )
-        //sum += back.body.getLinearVelocity.x.abs * 0.5f
+      if( straightBody < 1.7 )
+        sum += back.body.getLinearVelocity.x.abs * 0.5f
 
       sum
     }

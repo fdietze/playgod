@@ -17,9 +17,14 @@ class LWJGLComponent(dimension:java.awt.Dimension) extends Component {
 class SettingTextField[T](init:T, update:String => Unit) extends TextField {
   maximumSize = new Dimension(50,50)
   text = init.toString
-  listenTo(this)
   reactions += {
     case e:EditDone =>
       update(text)
+  }
+}
+
+class ActionButton(title:String, action: => Unit) extends Button(title) {
+  reactions += {
+    case e:ButtonClicked => action
   }
 }

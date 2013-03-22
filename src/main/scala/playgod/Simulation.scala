@@ -22,12 +22,15 @@ import org.encog.neural.hyperneat.substrate.SubstrateFactory
 import org.encog.neural.neat.{NEATUtil, NEATPopulation, NEATNetwork}
 import org.encog.ml.data.basic.BasicMLData
 import org.encog.neural.neat.training.species.OriginalNEATSpeciation
+import Box2DTools.MathHelpers._
 
+case object Start
+case object Stop
 case object Reset
 case class BrainUpdate(brain:Brain)
 
 object LiveSimulation extends SimpleActor {
-  import Main.renderArea.{r,t,translation,zoom,fps}
+  import Main.renderArea.{r,t,translation,zoom,fps,autoCamera}
   val creature = new Box2DCreature
   val organism = creature.create
   val initialBoneStates = organism.boneStates
@@ -37,6 +40,8 @@ object LiveSimulation extends SimpleActor {
     running = true
     while( running ) {
       organism.step()
+      if( Main.top.autoCameraCheckBox.selected )
+          translation = organism.back.body.getPosition.clone * (-1/zoom)
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
       glLoadIdentity()
@@ -66,45 +71,48 @@ object LiveSimulation extends SimpleActor {
   }
 }
 
-object NeatSimulation {
-  def start() {
-    val creature = new Box2DCreature
-    val dummyBrain = creature.create.brain
-    def currentBoneStates = LiveSimulation.organism.boneStates
-    var scoreCalculations = 0
+object NeatSimulation extends SimpleActor {
+  val creature = new Box2DCreature
+  val dummyBrain = creature.create.brain
+  def currentBoneStates = LiveSimulation.organism.boneStates
+  var scoreCalculations = 0
 
-    val score = new CalculateScore {
+  val score = new CalculateScore {
 
-      def calculateScore(phenotype:MLMethod) = {
-        scoreCalculations += 1
-        val network = phenotype.asInstanceOf[NEATNetwork]
-        val organism = creature.create
+    def calculateScore(phenotype:MLMethod) = {
+      scoreCalculations += 1
+      val network = phenotype.asInstanceOf[NEATNetwork]
+      val organism = creature.create
 
-        organism ! BrainUpdate(organism.brain.update(network))
-        organism.maxSteps = 120
-        organism.setBoneStates(currentBoneStates)
-        organism.finish()
-        -organism.score
-      }
-
-      def shouldMinimize(): Boolean = true
-      def requireSingleThreaded(): Boolean = false
+      organism ! BrainUpdate(organism.brain.update(network))
+      organism.maxSteps = 120
+      organism.setBoneStates(currentBoneStates)
+      organism.finish()
+      -organism.score
     }
-    val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,100)
-    //pop.setActivationCycles(5)
-    pop.setInitialConnectionDensity(0.5)
-    pop.setSurvivalRate(0.0)
-    pop.reset()
 
-    val train = NEATUtil.constructNEATTrainer(pop,score)
+    def shouldMinimize(): Boolean = true
+    def requireSingleThreaded(): Boolean = false
+  }
+  val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,60)
+  //pop.setActivationCycles(5)
+  pop.setInitialConnectionDensity(0.1)
+  pop.setSurvivalRate(0.0)
+  pop.reset()
 
-    val speciation = new OriginalNEATSpeciation()
-    //speciation.setCompatibilityThreshold(1)
-    //speciation.setMaxNumberOfSpecies(1)
-    train.setSpeciation(speciation)
+  val train = NEATUtil.constructNEATTrainer(pop,score)
 
+  val speciation = new OriginalNEATSpeciation()
+  //speciation.setCompatibilityThreshold(1)
+  //speciation.setMaxNumberOfSpecies(1)
+  train.setSpeciation(speciation)
+  var i = 0
+  var running = false
+  
+  def start() {
     var lastBest = Double.MaxValue
-    for( i <- 0 until 100000 ) {
+    running = true
+    while( running ) {
       scoreCalculations = 0
       //currentBoneStates = LiveSimulation.organism.boneStates
       train.iteration()
@@ -128,7 +136,14 @@ object NeatSimulation {
         i, currentBestScore, currentBest.getLinks.size, scoreCalculations, pop.getSpecies.size))
       LiveSimulation ! BrainUpdate(LiveSimulation.organism.brain.update(currentBest))
       //}
+      i += 1
     }
+  }
+  
+  def stop() {running = false}
+  def receive = {
+    case Start => start(); println("start")
+    case Stop => stop(); println("stop")
   }
 }
 

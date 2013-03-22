@@ -22,6 +22,7 @@ object Main extends SimpleSwingApplication {
     var translation = new Vec2(0,-200)
     def componentMousePos = new Vec2(Mouse.getX, Mouse.getY)
     def mousePos = componentMousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
+    var autoCamera = true
 
     def r = Main.width * 0.5f * zoom
     def t = Main.height * 0.5f * zoom
@@ -44,25 +45,22 @@ object Main extends SimpleSwingApplication {
   //def population = Simulation.population
 
   val top = new swing.MainFrame {
-    val drawBestCheckBox = new CheckBox("elite")
+    val autoCameraCheckBox = new CheckBox("Auto Camera")
+    /*val backgroundSimulationCheckBox = new CheckBox("Background Simulation") {
+      selected = true
+      reactions += {
+        case e:ButtonClicked =>
+          println(e)
+          if( selected ) NeatSimulation ! Stop
+          else           NeatSimulation ! Start
+      }
+    }*/
 
     val panel = new BoxPanel(Orientation.Vertical) {
       contents += new BoxPanel(Orientation.Horizontal) {
-        contents += drawBestCheckBox
-        /*contents += new Label("sub: ")
-        contents += new SettingTextField(Simulation.subSteps, x => Simulation.subSteps = x.toInt)
-        contents += new Label("age: ")
-        contents += new SettingTextField(creature.maxSimulationSteps, x => creature.maxSimulationSteps = x.toInt)*/
-        /*contents += new Label("popsize: ")
-        contents += new SettingTextField(population.populationSize, x => population.populationSize = x.toInt)
-        contents += new Label("cross %: ")
-        contents += new SettingTextField(population.crossoverProbability, x => population.crossoverProbability = x.toDouble)
-        contents += new Label("mut %: ")
-        contents += new SettingTextField(population.mutationProbability, x => population.mutationProbability = x.toDouble)
-        contents += new Label("mut: ")
-        contents += new SettingTextField(population.mutationStrength, x => population.mutationStrength = x.toDouble)
-        contents += new Label("elitism: ")
-        contents += new SettingTextField(population.elitism, x => population.elitism = x.toDouble)*/
+        contents += autoCameraCheckBox
+        //contents += backgroundSimulationCheckBox
+        contents += new ActionButton("Reset", LiveSimulation ! Reset)
       }
 
       contents += renderArea

@@ -76,7 +76,6 @@ object InputEvents {
     while(Keyboard.next) {
       val key = Keyboard.getEventKey
       if( Keyboard.getEventKeyState ) { // Key down
-        if( key == Keyboard.KEY_R) LiveSimulation ! Reset
         //if( key == Keyboard.KEY_LEFT) arrowDirection = -1
         //if( key == Keyboard.KEY_RIGHT) arrowDirection = 1
         //if( key == Keyboard.KEY_A) autoArrowDirections = !autoArrowDirections
@@ -84,6 +83,7 @@ object InputEvents {
         //if( key == Keyboard.KEY_LEFT) arrowDirection = 0
         //if( key == Keyboard.KEY_RIGHT) arrowDirection = 0
         if( key == Keyboard.KEY_ESCAPE) Main.quit()
+        if( key == Keyboard.KEY_R) LiveSimulation ! Reset
       }
       //println("arrowDirection: " + arrowDirection)
     }
