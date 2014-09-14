@@ -47,7 +47,7 @@ abstract class SimulationOrganism extends Organism {
 
 abstract class Box2DSimulationOrganism extends SimulationOrganism {
   val timeStep = 1f / 30f
-  val world = new World(new Vec2(0, -9.81f), true)
+  val world = new World(new Vec2(0, -9.81f))
   world.setDebugDraw(DebugDrawer)
 
   def simulationStep() { world.step(timeStep, 10, 10) }

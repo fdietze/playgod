@@ -57,7 +57,7 @@ object Box2DTools {
 
     val body = world.createBody(bd)
     body.createFixture(fixtureDef)
-    
+
     return body
   }
 
@@ -92,8 +92,8 @@ object Box2DTools {
 
     def drawTransform(xf: Transform) {
       glPushMatrix()
-      glTranslatef(xf.position.x, xf.position.y, 0)
-      glRotatef(xf.getAngle.toDegrees, 0, 0, 1)
+      glTranslatef(xf.p.x, xf.p.y, 0)
+      glRotatef(xf.q.getAngle.toDegrees, 0, 0, 1)
 
       glBegin(GL_LINES)
         glColor3f(1, 0, 0)
