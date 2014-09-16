@@ -19,15 +19,15 @@ class Box2DCreature extends Creature {
   gb[NamedChromosomeBuilder]("skeleton")("backMotorTorque") = 1
   gb[NamedChromosomeBuilder]("skeleton")("legMotorTorque") = 1
   gb[NamedChromosomeBuilder]("skeleton")("footMotorTorque") = 1
-  gb[NamedChromosomeBuilder]("skeleton")("backMotorSpeed") = 1
-  gb[NamedChromosomeBuilder]("skeleton")("legMotorSpeed") = 1
-  gb[NamedChromosomeBuilder]("skeleton")("footMotorSpeed") = 1
+  // gb[NamedChromosomeBuilder]("skeleton")("backMotorSpeed") = 1
+  // gb[NamedChromosomeBuilder]("skeleton")("legMotorSpeed") = 1
+  // gb[NamedChromosomeBuilder]("skeleton")("footMotorSpeed") = 1
   //gb[NamedChromosomeBuilder]("skeleton")("backRestAngle") = 0.5
   //gb[NamedChromosomeBuilder]("skeleton")("legRestAngle") = 0.5 //TODO: implement jointbones with inverse angle
   gb[NamedChromosomeBuilder]("skeleton")("footRestAngle") = 0
 
   val sensorCount = 6
-  val sensorBoneCount = 7
+  val sensorBoneCount = 4
   val effectorBoneCount = 5
   val dummyBrain = new FeedForwardBrain(new Array[Sensor](sensorCount*sensorBoneCount), new Array[Effector](effectorBoneCount))
   gb("brain") = dummyBrain.getWeights
@@ -74,7 +74,7 @@ class Box2DCreature extends Creature {
         val effectorBones = jointBones // */
     val maxMotorSpeed = 2f
     val maxMotorTorque = 5000f
-    val head      = new RootBone(world, length = 0.2, thickness = 0.2, pos = Vec2(0,3), angle = 0.0)
+    val head      = new RootBone(world, length = 0.2, thickness = 0.2, pos = Vec2(0,0.5), angle = 0.0)
     val back      = new JointBone(world, length = 0.6, thickness = 0.15, parent = head, jointAttach = 1, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
 
     val leftArm   = new JointBone(world, length = 0.3, thickness = 0.1, parent = back, jointAttach = 0.2, restAngle = 0, maxMotorTorque = maxMotorTorque, maxMotorSpeed = maxMotorSpeed)
@@ -112,12 +112,12 @@ class Box2DCreature extends Creature {
         Sensor(body.getLinearVelocity.x),
         Sensor(body.getLinearVelocity.y),
         // Sensor(body.getAngularVelocity),
-        Sensor(sin(body.getAngularVelocity)),
-        Sensor(cos(body.getAngularVelocity)),
+        // Sensor(sin(body.getAngularVelocity)),
+        // Sensor(cos(body.getAngularVelocity)),
         Sensor(sin(body.getAngle)),
-        Sensor(cos(body.getAngle)),
-        Sensor(body.getPosition.y/10f)/*,
-        Sensor(playgod.Main.arrowDirection)*/
+        Sensor(cos(body.getAngle))
+        // Sensor(body.getPosition.y/10f)/*,
+        // Sensor(playgod.Main.arrowDirection)*/
       ) ),
       outputs = jointBones.map( bone =>
         Effector{param => bone.angleTarget = outToAngle(param)}
@@ -130,10 +130,10 @@ class Box2DCreature extends Creature {
         (head.body.getPosition.y - back.body.getPosition.y) +
         (back.body.getPosition.y - leftLeg.body.getPosition.y) +
         (leftLeg.body.getPosition.y - leftLowerLeg.body.getPosition.y) +
-        (leftLowerLeg.body.getPosition.y - leftFoot.body.getPosition.y) +
+        // (leftLowerLeg.body.getPosition.y - leftFoot.body.getPosition.y) +
         (back.body.getPosition.y - rightLeg.body.getPosition.y) +
-        (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y) +
-        (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)// */
+        (rightLeg.body.getPosition.y - rightLowerLeg.body.getPosition.y)
+        // (rightLowerLeg.body.getPosition.y - rightFoot.body.getPosition.y)// */
 
     override def reward = {
       //val vel = hipBone.body.getLinearVelocity.y
@@ -141,18 +141,20 @@ class Box2DCreature extends Creature {
       //val height = bones.map(_.body.getPosition.y).sum/bones.size
       //height
 
-      val vel = back.body.getLinearVelocity.x
+      // val vel = back.body.getLinearVelocity.x
+      // val way = back.body.getPosition.x
       // back.body.getLinearVelocity.x *
 
       var sum = 0.0
-      sum += straightBody min 1.7f
+      sum += math.pow(1+(straightBody min 1.6f),2)
       /*sum += backBone.body.getPosition.y - hipBone.body.getPosition.y
       sum += hipBone.body.getPosition.y - leftFoot.body.getPosition.y
       sum += hipBone.body.getPosition.y - rightFoot.body.getPosition.y*/
-      if( straightBody >= 1.7 && vel > 0 ) {
-        sum += vel
+      // if( straightBody >= 1.6 && vel > 0 ) {
+        // sum += vel
+        // sum += way
         //sum += (leftFoot.body.getPosition.y - rightFoot.body.getPosition.y).abs
-      }
+      // }
 
       sum
     }
@@ -163,8 +165,8 @@ class Box2DCreature extends Creature {
       //back.body.getPosition.x.abs / 20
       var sum = 0.0
       //sum += hipBone.body.getAngle.abs * 10
-      if( straightBody < 1.7 )
-        sum += back.body.getLinearVelocity.x.abs * 0.5f
+      // if( straightBody < 1.7 )
+        // sum += math.pow(back.body.getLinearVelocity.x.abs,2)
 
       sum
     }

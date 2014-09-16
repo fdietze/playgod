@@ -68,6 +68,7 @@ object LiveSimulation extends SimpleActor {
 
     case Reset =>
       organism.setBoneStates(initialBoneStates)
+      organism.age = 0
   }
 }
 
@@ -76,6 +77,7 @@ object NeatSimulation extends SimpleActor {
   val dummyBrain = creature.create.brain
   def currentBoneStates = LiveSimulation.organism.boneStates
   var scoreCalculations = 0
+  val maxSimulationAge = 400
 
   val score = new CalculateScore {
 
@@ -85,19 +87,19 @@ object NeatSimulation extends SimpleActor {
       val organism = creature.create
 
       organism ! BrainUpdate(organism.brain.update(network))
-      organism.maxSteps = 120
-      organism.setBoneStates(currentBoneStates)
+      // organism.setBoneStates(currentBoneStates)
+      organism.maxSteps = maxSimulationAge
       organism.finish()
-      -organism.score
+      organism.score
     }
 
-    def shouldMinimize(): Boolean = true
+    def shouldMinimize(): Boolean = false
     def requireSingleThreaded(): Boolean = false
   }
-  val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,60)
-  //pop.setActivationCycles(5)
-  pop.setInitialConnectionDensity(0.1)
-  pop.setSurvivalRate(0.0)
+  val pop = new NEATPopulation(dummyBrain.inputs.size,dummyBrain.outputs.size,200)
+  // pop.setActivationCycles(2)
+  pop.setInitialConnectionDensity(0.0)
+  // pop.setSurvivalRate(0.0)
   pop.reset()
 
   val train = NEATUtil.constructNEATTrainer(pop,score)
@@ -108,9 +110,9 @@ object NeatSimulation extends SimpleActor {
   train.setSpeciation(speciation)
   var i = 0
   var running = false
-  
+
   def start() {
-    var lastBest = Double.MaxValue
+    var lastBest = Double.MinValue
     running = true
     while( running ) {
       scoreCalculations = 0
@@ -119,8 +121,6 @@ object NeatSimulation extends SimpleActor {
       val bestGenome = train.getBestGenome
       val best = train.getCODEC().decode(bestGenome).asInstanceOf[NEATNetwork]
       val bestScore = bestGenome.getScore
-      //if( bestScore < lastBest ) {
-        lastBest = bestScore
 
       for( species <- pop.getSpecies.par ) {
         val leader = species.getLeader
@@ -134,12 +134,18 @@ object NeatSimulation extends SimpleActor {
       val currentBestScore = currentBestGenome.getScore
       println("i: %d best: %5.3f, links: %d, scored: %d, species: %d" format (
         i, currentBestScore, currentBest.getLinks.size, scoreCalculations, pop.getSpecies.size))
-      LiveSimulation ! BrainUpdate(LiveSimulation.organism.brain.update(currentBest))
-      //}
+
+      if( bestScore > lastBest ) {
+        if( LiveSimulation.organism.age > maxSimulationAge ) {
+          lastBest = bestScore
+          LiveSimulation ! Reset
+          LiveSimulation ! BrainUpdate(LiveSimulation.organism.brain.update(currentBest))
+        }
+      }
       i += 1
     }
   }
-  
+
   def stop() {running = false}
   def receive = {
     case Start => start(); println("start")
