@@ -80,6 +80,8 @@ object Main extends SimpleSwingApplication {
       reactions += {
         case KeyPressed(_, Key.Escape, _, _) =>
           quit()
+        case KeyPressed(_, Key.R, _, _) =>
+          LiveSimulation ! Reset
       }
     }
     contents = panel
