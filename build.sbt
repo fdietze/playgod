@@ -2,13 +2,13 @@ name := "playgod"
 
 version := "0.1"
 
-scalaVersion := "2.11.2"
+scalaVersion := "2.11.8"
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
-libraryDependencies ++= Seq("org.scala-lang" % "scala-library-all" % "2.11.2",
+libraryDependencies ++= Seq("org.scala-lang" % "scala-library-all" % "2.11.8",
                             "org.jbox2d" % "jbox2d-library" % "2.2.1.1",
-                            "org.encog" % "encog-core" % "3.2.0"
+                            "org.encog" % "encog-core" % "3.3.0"
                             //"com.typesafe.akka" %% "akka-actor" % "2.1.2"
                             )
 
