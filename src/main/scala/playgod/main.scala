@@ -18,19 +18,19 @@ import Box2DTools._
 import collection.mutable
 
 object Main extends SimpleSwingApplication {
-  
-  val width = 800
-  val height = 600
-  
+
+  val width = 1500
+  val height = 1000
+
   var running = true
   val fps = 60
-  
-  var zoom = 1f/10f
+
+  var zoom = 1f/5f
   def r = width * 0.5f * zoom
   def t = height * 0.5f * zoom
   val n = -1f
   val f = 1f
-  var translation = new Vec2(0,-200)
+  var translation = new Vec2(-300,-200)
   def mousePos = new Vec2(Mouse.getX,Mouse.getY)
   def box2dMousePos = mousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
 
@@ -52,7 +52,7 @@ object Main extends SimpleSwingApplication {
 
   val statsHeight = 0.2f
   val statsRange = width
-  
+
   val renderArea = new LWJGLComponent(new Dimension(width, height))
   val drawBestCheckBox = new CheckBox("elite")
   val top = new swing.MainFrame {
@@ -114,16 +114,16 @@ object Main extends SimpleSwingApplication {
           }
         }
 
-        contents += new Label("mut %: ")
-        contents += new TextField {
-          maximumSize = new Dimension(50,50)
-          text = population.mutationProbability.toString
-          listenTo(this)
-          reactions += {
-            case e:EditDone =>
-              population.mutationProbability = this.text.toDouble
-          }
-        }
+        // contents += new Label("mut %: ")
+        // contents += new TextField {
+        //   maximumSize = new Dimension(50,50)
+        //   text = population.mutationProbability.toString
+        //   listenTo(this)
+        //   reactions += {
+        //     case e:EditDone =>
+        //       population.mutationProbability = this.text.toDouble
+        //   }
+        // }
 
         contents += new Label("mut: ")
         contents += new TextField {
@@ -148,7 +148,7 @@ object Main extends SimpleSwingApplication {
         }
       }
       contents += renderArea
-      
+
       requestFocus()
       listenTo(keys)
       reactions += {
@@ -169,7 +169,7 @@ object Main extends SimpleSwingApplication {
     super.main(args)
     start()
   }
-  
+
   def drawStats() {
     val padding = 0.01f
 
@@ -190,7 +190,7 @@ object Main extends SimpleSwingApplication {
       glColor3f(91f/255f, 177f/255f, 189f/255f)
       glVertex2f(0, (1-2*padding-statsHeight).toFloat)
       glVertex2f(1, (1-2*padding-statsHeight).toFloat)
-      
+
       (new Color(0x7AECFC)).glColor // age
       glVertex2f(0, (1-2*padding-statsHeight).toFloat)
       glVertex2f(population.organisms.head.asInstanceOf[Box2DSimulationOrganism].age.toFloat/population.organisms.head.asInstanceOf[Box2DSimulationOrganism].maxSteps, (1-2*padding-statsHeight).toFloat)
@@ -200,11 +200,11 @@ object Main extends SimpleSwingApplication {
     def bestData = bestScoreStats.takeRight(statsRange)
     def avgData = avgScoreStats.takeRight(statsRange)
     def worstData = worstScoreStats.takeRight(statsRange)
-    
+
     val min = worstData.min
     val max = bestData.max
     val range = max - min
-    
+
 
     for( (data,color) <- List((worstData,new Color(0xFFB4B0)), (avgData,new Color(242,200,148)), (bestData,new Color(0xF5FFA3))) ) {
       glBegin(GL_LINE_STRIP)
@@ -221,7 +221,7 @@ object Main extends SimpleSwingApplication {
     }
 
     glPopMatrix()
-    
+
   }
 
 
@@ -234,9 +234,9 @@ object Main extends SimpleSwingApplication {
     glLoadIdentity()
 
     glMatrixMode(GL_MODELVIEW_MATRIX)
-    
-    
-    
+
+
+
     def now = System.currentTimeMillis
     var lastFpsUpdate = now
     var frameCount = 0
@@ -255,7 +255,7 @@ object Main extends SimpleSwingApplication {
         lastFpsUpdate = now
       }
     }
-    
+
     var mouseJoint:Option[MouseJoint] = None
     var dragging = false
     def processEvents() {
@@ -265,13 +265,13 @@ object Main extends SimpleSwingApplication {
           case (0 , true) => // left down
             /*for( organism <- population.organisms.map(_.asInstanceOf[Box2DSimulationOrganism]) ) {
               val world = organism.world
-              
+
               val tolerance = new Vec2(0.01f, 0.01f)
               val toleranceArea = new AABB(box2dMousePos.sub(tolerance), box2dMousePos.add(tolerance))
                 world.queryAABB(new QueryCallback {
                   def reportFixture(fixture:Fixture):Boolean = {
                     if( fixture.getDensity == 0f ) return true
-                    
+
                     val body = fixture.getBody
                     val mouseJointDef = new MouseJointDef
                     mouseJointDef.bodyA = body
@@ -280,7 +280,7 @@ object Main extends SimpleSwingApplication {
                     mouseJointDef.maxForce = 1000f * body.getMass
                     mouseJoint = Some(world.createJoint(mouseJointDef).asInstanceOf[MouseJoint])
                     body.setAwake(true)
-                    
+
                     return false // cancel iteration
                   }
                 }, toleranceArea)
@@ -308,7 +308,7 @@ object Main extends SimpleSwingApplication {
           case _ =>
         }
       }
-      
+
       if( mouseJoint.isDefined ) {
         mouseJoint.get.setTarget(box2dMousePos)
       }
@@ -316,7 +316,7 @@ object Main extends SimpleSwingApplication {
         translation.x += getDX
         translation.y += getDY
       }
-      
+
       while(Keyboard.next) {
         val key = Keyboard.getEventKey
         if( Keyboard.getEventKeyState ) { // Key down
@@ -336,7 +336,7 @@ object Main extends SimpleSwingApplication {
     var lastBestScore = Double.MinValue
     while(running) {
       processEvents()
-      
+
       for( _ <- 0 until subSteps ) {
         if( autoArrowDirections ) {
           val t = i % (3 * arrowChangeInterval)
@@ -345,19 +345,19 @@ object Main extends SimpleSwingApplication {
           else /*if( t < arrowChangeInterval*3 )*/ arrowDirection = 1
           //println("i: %d arrowDirection: " + arrowDirection)
         }
-        
-        
+
+
         //population.update()
         population.organisms.par.foreach(_.asInstanceOf[Box2DSimulationOrganism].step())
         stepCount += population.populationSize
-        
+
         i += 1
         if( i % generationLifeTime == 0 ) {
-          population.organisms.par.foreach(_.asInstanceOf[Box2DSimulationOrganism].finish()) 
+          population.organisms.par.foreach(_.asInstanceOf[Box2DSimulationOrganism].finish())
           val bestScore = population.organisms.maxBy(_.fitness).fitness
           val avgScore = population.organisms.map(_.fitness).sum / population.populationSize
           val worstScore = population.organisms.minBy(_.fitness).fitness
-          
+
           if( bestScore != lastBestScore ) {
             println("generation: %d, maxScore: %s" format (generation, bestScore))
             lastBestScore = bestScore

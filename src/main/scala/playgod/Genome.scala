@@ -32,13 +32,9 @@ class Genome(val chromosomes:SortedMap[String,Chromosome]) extends MapProxy[Stri
     new Genome(newChromosomes.result())
   }
 
-  def mutate(probability:Double, strength:Double) = {
+  def mutate(strength:Double) = {
     val newGenes = genes.toArray
-
-    val mutations = (probability * genes.size).toInt
-    for( _ <- 0 until mutations )
-      newGenes(rInt % genes.size) += rGaussian*strength
-    update(newGenes)
+    update(newGenes.map(x => x + rGaussian*strength))
   }
 
   def crossover(that:Genome) = {

@@ -9,8 +9,7 @@ class Population(val creature:Creature) {
   var populationSize = 30
   val parentCount = 2 //TODO: crossover with more parents
   var crossoverProbability = 0.85
-  var mutationProbability = 0.01
-  var mutationStrength = 0.2
+  var mutationStrength = 0.01
   var elitism = 0.00
 
   //TODO: Array[O <: Organism]
@@ -27,17 +26,17 @@ class Population(val creature:Creature) {
     newGenomes.foreach(_.isElite = true)
     while( newGenomes.size < populationSize ) {
       if( sortedGenomes.size - newGenomes.size >= 2 ) {
-        val parentA = rankSelection(sortedOrganisms, (e:Organism) => e.fitness).genome
-        val parentB = rankSelection(sortedOrganisms, (e:Organism) => e.fitness).genome
+        val parentA = tournamentSelection(sortedOrganisms, (e:Organism) => e.fitness).genome
+        val parentB = tournamentSelection(sortedOrganisms, (e:Organism) => e.fitness).genome
         val (childA,childB) = if( inCase(crossoverProbability) ) {
           parentA crossover parentB
         } else {
           (parentA, parentB)
         }
-        newGenomes += childA.mutate(mutationProbability, mutationStrength)
-        newGenomes += childB.mutate(mutationProbability, mutationStrength)
+        newGenomes += childA.mutate(mutationStrength)
+        newGenomes += childB.mutate(mutationStrength)
       } else {
-        newGenomes += sortedGenomes(rInt % sortedGenomes.size).mutate(mutationProbability, mutationStrength)
+        newGenomes += sortedGenomes(rInt % sortedGenomes.size).mutate(mutationStrength)
       }
     }
 

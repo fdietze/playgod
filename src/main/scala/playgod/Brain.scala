@@ -7,10 +7,10 @@ import org.encog.engine.network.activation.ActivationTANH
 class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWeights:Option[Array[Double]] = None) {
 
   val network = new BasicNetwork
-  network.addLayer(new BasicLayer(null,false, inputs.size))
-  network.addLayer(new BasicLayer(new ActivationTANH,false,inputs.size/8))
-  //network.addLayer(new BasicLayer(new ActivationTANH,true,inputs.size))
-  network.addLayer(new BasicLayer(new ActivationTANH,false,outputs.size))
+  network.addLayer(new BasicLayer(null,true, inputs.size))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,inputs.size))
+  network.addLayer(new BasicLayer(new ActivationTANH,true,outputs.size))
+  network.addLayer(new BasicLayer(new ActivationTANH,true,outputs.size))
   network.getStructure.finalizeStructure()
   /*val pattern = new ElmanPattern
   pattern.setActivationFunction(new ActivationTANH)

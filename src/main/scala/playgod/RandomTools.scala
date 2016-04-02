@@ -1,18 +1,11 @@
 package playgod
 
-/**
- * Created with IntelliJ IDEA.
- * User: felix
- * Date: 3/4/13
- * Time: 1:42 PM
- * To change this template use File | Settings | File Templates.
- */
 object RandomTools {
   def rInt = util.Random.nextInt.abs
   def rGaussian = util.Random.nextGaussian
   def rDouble = util.Random.nextDouble
   def inCase(probability:Double) = rDouble < probability
-  
+
   def rouletteWheelSelection[T](seq:IndexedSeq[T], score:(T) => Double) = {
     val min = score(seq.minBy(score))
     val offset = if( min < 0.0 ) min.abs else 0.0
@@ -28,13 +21,13 @@ object RandomTools {
     }
     seq(i)
   }
-  
+
   def rankSelection[T](seq:IndexedSeq[T], score:(T) => Double) = {
     val rankSeq = seq.sortBy(score).zipWithIndex.map{case (a,i) => (a,(i+1).toDouble)}
 
     val sum = rankSeq.map(_._2).sum
     val r = rDouble * sum
-    
+
     var i = 0
     var currentSum = rankSeq(i)._2
     while( currentSum < r ) {
@@ -42,5 +35,9 @@ object RandomTools {
       currentSum += rankSeq(i)._2
     }
     rankSeq(i)._1
+  }
+
+  def tournamentSelection[T](seq:IndexedSeq[T], score:(T) => Double) = {
+    (0 until 5).map(_ => seq(rInt % seq.size)).maxBy(score)
   }
 }
