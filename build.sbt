@@ -1,8 +1,14 @@
-scalaVersion := "2.10.0"
+name := "playgod"
 
-libraryDependencies += "org.scala-lang" % "scala-swing" % "2.10.0"
+version := "0.1"
+scalaVersion := "2.11.8"
 
-libraryDependencies += "org.jbox2d" % "jbox2d-library" % "2.1.2.2"
+libraryDependencies ++= Seq("org.scala-lang" % "scala-swing" % "2.11+",
+                            "org.jbox2d" % "jbox2d-library" % "2.1.2.2",
+                            "org.encog" % "encog-core" % "3.2.0"
+                            )
+
+LWJGLPlugin.lwjglSettings
 
 libraryDependencies += "org.encog" % "encog-core" % "3.1.0"
 
