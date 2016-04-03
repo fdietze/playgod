@@ -19,8 +19,8 @@ import collection.mutable
 
 object Main extends SimpleSwingApplication {
 
-  val width = 1500
-  val height = 1000
+  val width = 1000
+  val height = 300
 
   var running = true
   val fps = 60
@@ -30,7 +30,7 @@ object Main extends SimpleSwingApplication {
   def t = height * 0.5f * zoom
   val n = -1f
   val f = 1f
-  var translation = new Vec2(-300,-200)
+  var translation = new Vec2(-400,-50)
   def mousePos = new Vec2(Mouse.getX,Mouse.getY)
   def box2dMousePos = mousePos.sub(translation).mul(zoom).add(new Vec2(-r, -t))
 

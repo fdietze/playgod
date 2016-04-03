@@ -8,8 +8,16 @@ class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWe
 
   val network = new BasicNetwork
   network.addLayer(new BasicLayer(null,true, inputs.size))
-  // network.addLayer(new BasicLayer(new ActivationTANH,true,inputs.size))
-  network.addLayer(new BasicLayer(new ActivationTANH,true,outputs.size))
+  network.addLayer(new BasicLayer(new ActivationTANH,true,inputs.size))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,outputs.size))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
+  // network.addLayer(new BasicLayer(new ActivationTANH,true,5))
   network.addLayer(new BasicLayer(new ActivationTANH,true,outputs.size))
   network.getStructure.finalizeStructure()
   /*val pattern = new ElmanPattern
@@ -19,7 +27,7 @@ class Brain(val inputs:Array[Sensor], val outputs:Array[Effector], val initialWe
   pattern.setOutputNeurons(outputs.size)
   val network = pattern.generate().asInstanceOf[BasicNetwork]*/
 
-  val randomizer = new org.encog.mathutil.randomize.GaussianRandomizer(0,1)
+  val randomizer = new org.encog.mathutil.randomize.GaussianRandomizer(0,0.1)
 
   if( initialWeights.isDefined )
     replaceWeights(initialWeights.get)

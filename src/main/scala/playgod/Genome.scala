@@ -38,10 +38,10 @@ class Genome(val chromosomes:SortedMap[String,Chromosome]) extends MapProxy[Stri
   }
 
   def crossover(that:Genome) = {
-    val crossoverPoint = rInt % genes.size
-    val offspringGenesA = this.genes.slice(0, crossoverPoint) ++ that.genes.slice(crossoverPoint, genes.size)
-    val offspringGenesB = that.genes.slice(0, crossoverPoint) ++ this.genes.slice(crossoverPoint, genes.size)
-    (update(offspringGenesA), update(offspringGenesB))
+    val crossoverPoint = rDouble
+
+    val offspringGenes = (this.genes zip that.genes) map {case (a,b) => a*crossoverPoint + b*(1-crossoverPoint)}
+    update(offspringGenes)
   }
 
   var isElite = false

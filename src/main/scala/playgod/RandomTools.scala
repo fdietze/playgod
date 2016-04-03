@@ -38,6 +38,6 @@ object RandomTools {
   }
 
   def tournamentSelection[T](seq:IndexedSeq[T], score:(T) => Double) = {
-    (0 until 5).map(_ => seq(rInt % seq.size)).maxBy(score)
+    (0 until 3).map(_ => seq(rInt % seq.size)).maxBy(score)
   }
 }

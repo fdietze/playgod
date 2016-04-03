@@ -33,7 +33,7 @@ class Box2DCreature extends Creature {
   gb("brain") = dummyBrain.getWeights
 
   var genome = gb.toGenome
-  var maxSimulationSteps = 3000
+  var maxSimulationSteps = 4000
   var simulationTimeStep = 1/60f
   def currentGenome = genome
 
@@ -59,8 +59,8 @@ class Box2DCreature extends Creature {
     // val obstacle = createBox(world, pos = new Vec2(80, -3), width = 2, height = 8, density = 0f, friction = 1f)
     // val obstacle2 = createBox(world, pos = new Vec2(90, -2), width = 2, height = 8, density = 0f, friction = 1f)
     // val ground2 = createBox(world, pos = new Vec2(205, -50), width = 200, height = 100, density = 0f, friction = 1f)
-    for( i <- 1 to 20 ) {
-      createBox(world, pos = new Vec2(50+i*20, -5+i*i/4), width = 20, height = 10, density = 0f, friction = 1f)
+    for( i <- 1 to 30 ) {
+      createBox(world, pos = new Vec2(i*20, -5+i*i/6), width = 20, height = 10, density = 0f, friction = 1f)
     }
 
         val hipBone   = new RootBone(world, length = sk("hipLength").abs*100, thickness = 1, pos = Vec2(0,(sk("hipLength")+sk("backLength")+sk("legLength")+sk("footLength"))*100), angle = 0.0)
@@ -115,13 +115,12 @@ class Box2DCreature extends Creature {
     assert( brain.outputs.size == dummyBrain.outputs.size )
 
     override def reward = {
-      backBone.body.getLinearVelocity.x * backBone.body.getPosition.y*backBone.body.getPosition.y
+      Math.signum(hipBone.body.getPosition.y)*hipBone.body.getPosition.y*hipBone.body.getPosition.y +
+      Math.signum(backBone.body.getLinearVelocity.x)*backBone.body.getLinearVelocity.x*backBone.body.getLinearVelocity.x*50
 
     }
     override def penalty = {
-      var sum = 0.0
-
-      sum
+      if(Math.abs(backBone.body.getAngularVelocity) > 5) 1 else 0
     }
 
     override def step() {
